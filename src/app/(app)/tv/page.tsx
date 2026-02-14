@@ -54,6 +54,10 @@ export default function TVPage() {
     { key: string; count: number }[]
   >([]);
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [ambientLeaves, setAmbientLeaves] = useState<
+    { id: number; left: number; fallDuration: number; swayDuration: number; swayDelay: number; size: number; rotation: number }[]
+  >([]);
+  const ambientIdRef = useRef(0);
   const supabaseRef = useRef(createClient());
   const previousFirstTradeIdRef = useRef<string | null>(null);
 
@@ -217,6 +221,41 @@ export default function TVPage() {
     };
   }, [fetchAndRank]);
 
+  // Ambient falling leaves — spawn batches continuously, clear periodically
+  useEffect(() => {
+    const spawnInterval = setInterval(() => {
+      const batch = Array.from({ length: 3 + Math.floor(Math.random() * 3) }, () => {
+        const id = ambientIdRef.current++;
+        return {
+          id,
+          left: Math.random() * 100,
+          fallDuration: 8 + Math.random() * 6,
+          swayDuration: 3 + Math.random() * 3,
+          swayDelay: Math.random() * 2,
+          size: 30 + Math.random() * 20,
+          rotation: Math.random() * 360,
+        };
+      });
+      setAmbientLeaves((prev) => [...prev, ...batch]);
+      // Auto-remove each leaf after its fall duration + buffer
+      for (const leaf of batch) {
+        setTimeout(() => {
+          setAmbientLeaves((prev) => prev.filter((l) => l.id !== leaf.id));
+        }, (leaf.fallDuration + 1) * 1000);
+      }
+    }, 2000);
+
+    // Periodic clear to prevent any buildup
+    const clearInterval_ = setInterval(() => {
+      setAmbientLeaves([]);
+    }, 30000);
+
+    return () => {
+      clearInterval(spawnInterval);
+      clearInterval(clearInterval_);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-background flex items-center justify-center z-[100]">
@@ -229,21 +268,21 @@ export default function TVPage() {
 
   return (
     <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden p-3">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b-2 border-border shrink-0">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/timbermarket_logo.svg"
             alt="TimberMarket"
-            width={36}
-            height={36}
-            className="shrink-0"
+            width={44}
+            height={44}
+            className="shrink-0 w-11 h-11"
           />
-          <span className="text-accent font-bold text-lg font-[family-name:var(--font-gaegu)]">
+          <span className="text-accent font-bold text-2xl font-[family-name:var(--font-gaegu)]">
             TimberMarket
           </span>
         </Link>
         {userCount != null && (
-          <span className="text-foreground text-base font-medium tabular-nums">
+          <span className="text-foreground text-2xl font-bold font-[family-name:var(--font-gaegu)] tabular-nums">
             {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""}
           </span>
         )}
@@ -251,7 +290,7 @@ export default function TVPage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel: top = featured, bottom = top 5 by trading volume; no scroll */}
-        <div className="w-2/3 flex flex-col border-r border-border/50 min-h-0 overflow-hidden">
+        <div className="w-2/3 flex flex-col border-r-2 border-border min-h-0 overflow-hidden">
           {/* Top: featured market (admin-selected) */}
           <div className="flex-[0_0_40%] flex flex-col min-h-0 overflow-hidden">
             {featuredMarket ? (
@@ -278,7 +317,7 @@ export default function TVPage() {
                   </span>
                   <span>{formatLeaves(featuredMarket.volume)} total volume</span>
                 </div>
-                <div className="w-full max-h-[213px] rounded-lg overflow-hidden border border-border/50 shrink-0 p-2">
+                <div className="w-full max-h-[213px] rounded-lg overflow-hidden border-2 border-border shrink-0 p-2">
                   <FeaturedChart
                     marketId={featuredMarket.id}
                     data={historyByMarket[featuredMarket.id] ?? []}
@@ -317,7 +356,7 @@ export default function TVPage() {
 
         {/* Right panel: Recent trades */}
         <div className="w-1/3 flex flex-col overflow-hidden relative">
-          <div className="px-5 py-4 border-b border-border/50 shrink-0">
+          <div className="px-5 py-4 border-b-2 border-border shrink-0">
             <h2 className="text-lg font-semibold text-foreground">
               Recent Trades
             </h2>
@@ -328,7 +367,7 @@ export default function TVPage() {
                 <p className="text-muted text-sm">No trades yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/40">
+              <div className="divide-y-2 divide-border">
                 {trades.map((trade) => (
                   <TVTradeRow key={trade.id} trade={trade} />
                 ))}
@@ -389,6 +428,41 @@ export default function TVPage() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* Ambient falling SVG leaves overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden z-20"
+        aria-hidden
+      >
+        {ambientLeaves.map((leaf) => (
+          <div
+            key={leaf.id}
+            className="ambient-leaf-fall absolute"
+            style={{
+              left: `${leaf.left}%`,
+              top: '-60px',
+              ['--fall-duration' as string]: `${leaf.fallDuration}s`,
+              opacity: 0.55,
+            }}
+          >
+            <div
+              className="ambient-leaf-sway"
+              style={{
+                ['--sway-duration' as string]: `${leaf.swayDuration}s`,
+                ['--sway-delay' as string]: `${leaf.swayDelay}s`,
+              }}
+            >
+              <img
+                src="/leaves.svg"
+                alt=""
+                width={leaf.size}
+                height={leaf.size}
+                style={{ transform: `rotate(${leaf.rotation}deg)` }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

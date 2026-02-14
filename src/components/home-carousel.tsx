@@ -36,6 +36,26 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
     slideRefs.current = slideRefs.current.slice(0, count);
   }, [count]);
 
+  // Detect manual scroll/swipe and update index
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const scrollLeft = container.scrollLeft;
+      const slideWidth = container.offsetWidth;
+      const newIndex = Math.round(scrollLeft / slideWidth);
+
+      if (newIndex !== index && newIndex >= 0 && newIndex < count) {
+        setIndex(newIndex);
+        setAutoPlay(false); // Stop autoplay when user manually scrolls
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [index, count]);
+
   // Auto-play carousel
   useEffect(() => {
     if (!autoPlay || count <= 1) return;
@@ -94,7 +114,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
           type="button"
           onClick={goPrev}
           aria-label="Previous market"
-          className="p-2 text-muted hover:text-foreground transition-colors rounded border border-border hover:bg-card-hover"
+          className="hidden lg:block p-2 text-muted hover:text-foreground transition-colors rounded border border-border hover:bg-card-hover"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
@@ -121,7 +141,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
           type="button"
           onClick={goNext}
           aria-label="Next market"
-          className="p-2 text-muted hover:text-foreground transition-colors rounded border border-border hover:bg-card-hover"
+          className="hidden lg:block p-2 text-muted hover:text-foreground transition-colors rounded border border-border hover:bg-card-hover"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18l6-6-6-6" />

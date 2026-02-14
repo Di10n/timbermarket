@@ -111,15 +111,20 @@ export default async function MarketPage({
               <p className="text-muted text-sm mb-2">{typedMarket.description}</p>
             )}
             <div className="flex items-center gap-3 text-sm text-muted">
-              <span>{formatLeaves(typedMarket.volume)} Vol.</span>
+              <span className="font-medium">{formatLeaves(typedMarket.volume)} Vol.</span>
               <span>•</span>
               <span>{traderCount} {traderCount === 1 ? "trader" : "traders"}</span>
               <span>•</span>
-              <span>Created {timeAgo(typedMarket.created_at)}</span>
+              <span>{timeAgo(typedMarket.created_at)}</span>
+              <span>•</span>
+              <span>{commentsWithPositions.length} comment{commentsWithPositions.length !== 1 ? 's' : ''}</span>
               {typedMarket.status === "resolved" && (
-                <span className="px-2 py-0.5 bg-border/50 rounded text-foreground text-xs font-medium">
-                  Resolved: {typedMarket.resolution}
-                </span>
+                <>
+                  <span>•</span>
+                  <span className="px-2 py-0.5 bg-border/50 rounded text-foreground text-xs font-medium">
+                    Resolved: {typedMarket.resolution}
+                  </span>
+                </>
               )}
             </div>
           </div>

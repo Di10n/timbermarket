@@ -32,7 +32,9 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
             <NavLink href="/leaderboard">Leaderboard</NavLink>
             {profile?.is_admin && <NavLink href="/admin">Admin</NavLink>}
           </div>
+        </div>
 
+        <div className="flex items-center gap-2">
           {/* Mobile nav - show only on mobile */}
           <div className="lg:hidden">
             <details className="relative">
@@ -41,16 +43,14 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
                   <path d="M3 12h18M3 6h18M3 18h18" />
                 </svg>
               </summary>
-              <nav className="absolute right-0 top-14 bg-card border border-border rounded-lg shadow-lg min-w-[180px] z-50 overflow-hidden">
+              <nav className="absolute right-0 top-full mt-2 bg-card border border-border rounded-lg shadow-lg min-w-[180px] z-50 overflow-hidden">
                 <NavLink href="/portfolio" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Portfolio</NavLink>
                 <NavLink href="/leaderboard" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Leaderboard</NavLink>
                 {profile?.is_admin && <NavLink href="/admin" className="block px-4 py-3 hover:bg-card-hover">Admin</NavLink>}
               </nav>
             </details>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
           <ThemeToggle />
           {user && profile ? (
             <>
@@ -68,20 +68,12 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
               <LogoutButton />
             </>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="text-sm text-muted hover:text-foreground transition-colors"
-              >
-                Login
-              </Link>
-              <Link
-                href="/signup"
-                className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-              >
-                Sign up
-              </Link>
-            </>
+            <Link
+              href="/signup"
+              className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
+            >
+              Sign up
+            </Link>
           )}
         </div>
       </div>
