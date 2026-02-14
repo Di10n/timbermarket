@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { formatLeaves, timeAgo } from '@/lib/utils';
+import LeafIcon from '@/components/leaf-icon';
 import Link from 'next/link';
 
 interface Trade {
@@ -142,7 +143,7 @@ export default async function TradesPage() {
                   {/* Amount & Shares */}
                   <div className="shrink-0 text-right">
                     <div className="text-sm font-medium text-foreground">
-                      {formatLeaves(trade.amount)} 🍃
+                      {formatLeaves(trade.amount)} <LeafIcon />
                     </div>
                     <div className="text-xs text-muted">
                       {trade.shares.toFixed(2)} shares
@@ -216,7 +217,7 @@ export default async function TradesPage() {
                     </Link>
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-foreground">
-                        {formatLeaves(trade.amount)} 🍃
+                        {formatLeaves(trade.amount)} <LeafIcon />
                       </span>
                       <span
                         className={`font-medium ${

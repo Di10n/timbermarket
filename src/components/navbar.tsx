@@ -5,6 +5,7 @@ import { formatLeaves } from "@/lib/utils";
 import LogoutButton from "./logout-button";
 import ThemeToggle from "./theme-toggle";
 import NavLink from "./nav-link";
+import LeafIcon from "./leaf-icon";
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -72,7 +73,7 @@ export default async function Navbar() {
                   {profile.username}
                 </Link>
                 <span className="text-accent font-medium">
-                  {formatLeaves(profile.balance)} leaves
+                  {formatLeaves(profile.balance)} <LeafIcon />
                 </span>
               </div>
               <LogoutButton />

@@ -4,6 +4,7 @@ import { formatLeaves } from "@/lib/utils";
 import ThemeToggle from "@/components/theme-toggle";
 import NavLink from "@/components/nav-link";
 import LogoutButton from "@/components/logout-button";
+import LeafIcon from "@/components/leaf-icon";
 
 interface HomeTopBarProps {
   user: { id: string } | null;
@@ -63,7 +64,7 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
                   {profile.username}
                 </Link>
                 <span className="text-accent font-medium">
-                  {formatLeaves(profile.balance)} 🍃
+                  {formatLeaves(profile.balance)} <LeafIcon />
                 </span>
               </div>
               <LogoutButton />

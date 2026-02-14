@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatLeaves, formatShares, formatProbability, timeAgo } from "@/lib/utils";
 import type { Trade } from "@/lib/types";
+import LeafIcon from "@/components/leaf-icon";
 
 interface RecentTradesProps {
   trades: (Trade & {
@@ -100,7 +101,7 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
               </span>
             </div>
             <div className="flex items-center gap-3 text-xs text-muted">
-              <span>{formatLeaves(trade.amount)} 🍃</span>
+              <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
               <span>{formatShares(trade.shares)} shares</span>
               <span>
                 {formatProbability(trade.prob_before)} →{" "}

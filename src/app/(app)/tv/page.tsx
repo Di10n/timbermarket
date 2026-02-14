@@ -11,6 +11,7 @@ import {
 } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
+import LeafIcon from "@/components/leaf-icon";
 import {
   AreaChart,
   Area,
@@ -504,7 +505,7 @@ function TVTradeRow({ trade }: { trade: TradeWithContext }) {
         </span>
       </div>
       <div className="flex items-center gap-3 mt-1 text-xs text-muted">
-        <span>{formatLeaves(trade.amount)} 🍃</span>
+        <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
         <span>{formatShares(trade.shares)} shares</span>
         <span>
           {formatProbability(trade.prob_before)} →{" "}
