@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,29 +17,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    let email = identifier.trim();
-
-    // If input doesn't look like an email, resolve username to email
-    if (!email.includes("@")) {
-      try {
-        const res = await fetch("/api/auth/resolve-username", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: email }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || "Invalid login credentials");
-          setLoading(false);
-          return;
-        }
-        email = data.email;
-      } catch {
-        setError("Something went wrong. Please try again.");
-        setLoading(false);
-        return;
-      }
-    }
+    const email = `${username.trim()}@timbermarket.lol`;
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
@@ -48,7 +26,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError("Invalid username or password");
       setLoading(false);
       return;
     }
@@ -67,11 +45,11 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm text-muted mb-1">Email or Username</label>
+            <label className="block text-sm text-muted mb-1">Username</label>
             <input
               type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
               required
             />

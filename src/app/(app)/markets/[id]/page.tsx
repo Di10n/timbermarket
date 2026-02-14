@@ -97,52 +97,44 @@ export default async function MarketPage({
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold mb-2">{typedMarket.question}</h1>
-        {typedMarket.description && (
-          <p className="text-muted text-sm mb-2">{typedMarket.description}</p>
-        )}
-        <div className="flex items-center gap-4 text-sm text-muted">
-          <span>Created {timeAgo(typedMarket.created_at)}</span>
-          {typedMarket.status === "resolved" && (
-            <span className="px-2 py-0.5 bg-border/50 rounded text-foreground text-xs">
-              Resolved: {typedMarket.resolution}
-            </span>
-          )}
+      <div className="bg-card border border-border rounded-lg p-6 mb-6">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-bold mb-1">{typedMarket.question}</h1>
+            {typedMarket.description && (
+              <p className="text-muted text-sm mb-2">{typedMarket.description}</p>
+            )}
+            <div className="flex items-center gap-3 text-sm text-muted">
+              <span>Created {timeAgo(typedMarket.created_at)}</span>
+              {typedMarket.status === "resolved" && (
+                <span className="px-2 py-0.5 bg-border/50 rounded text-foreground text-xs font-medium">
+                  Resolved: {typedMarket.resolution}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-6 shrink-0">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-yes">
+                {formatProbability(typedMarket.probability)}
+              </div>
+              <div className="text-xs text-muted mt-1">Yes</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-no">
+                {formatProbability(1 - typedMarket.probability)}
+              </div>
+              <div className="text-xs text-muted mt-1">No</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Probability display */}
-      <div className="flex items-center gap-6 mb-6">
-        <div className="text-center">
-          <div className="text-4xl font-bold text-yes">
-            {formatProbability(typedMarket.probability)}
-          </div>
-          <div className="text-xs text-muted mt-1">Yes</div>
-        </div>
-        <div className="text-center">
-          <div className="text-4xl font-bold text-no">
-            {formatProbability(1 - typedMarket.probability)}
-          </div>
-          <div className="text-xs text-muted mt-1">No</div>
-        </div>
-      </div>
-
-      {/* Main content: Chart + Trade panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
+      {/* Top: Chart + Trade panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
           <ProbabilityChart data={historyResult.data ?? []} resolvedAt={typedMarket.resolved_at} />
-          <RecentTrades
-            trades={(tradesResult.data ?? []) as (Trade & { profiles?: { username: string } })[]}
-          />
-          <MarketComments
-            marketId={id}
-            comments={commentsWithPositions}
-            isAdmin={profileData?.is_admin ?? false}
-            currentUserId={user?.id}
-          />
         </div>
-
         <div className="lg:col-span-1">
           <TradePanel
             market={typedMarket}
@@ -150,6 +142,19 @@ export default async function MarketPage({
             balance={balance}
           />
         </div>
+      </div>
+
+      {/* Bottom: Comments (left) + Recent Trades (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <MarketComments
+          marketId={id}
+          comments={commentsWithPositions}
+          isAdmin={profileData?.is_admin ?? false}
+          currentUserId={user?.id}
+        />
+        <RecentTrades
+          trades={(tradesResult.data ?? []) as (Trade & { profiles?: { username: string } })[]}
+        />
       </div>
     </div>
   );

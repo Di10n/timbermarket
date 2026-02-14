@@ -1,101 +1,180 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import QrScanner from "@/components/qr-scanner";
 
 export default function VerifyPage() {
-  const [scanning, setScanning] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [code, setCode] = useState("");
+
+  function formatPhone(value: string) {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
+
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value;
+    // If user types a +, let them enter an international number freely
+    if (raw.startsWith("+")) {
+      setPhoneNumber(raw);
+    } else {
+      setPhoneNumber(formatPhone(raw));
+    }
+  }
+  const [step, setStep] = useState<"phone" | "code">("phone");
   const [status, setStatus] = useState<
-    "idle" | "verifying" | "success" | "error"
+    "idle" | "sending" | "verifying" | "success" | "error"
   >("idle");
   const [message, setMessage] = useState("");
   const router = useRouter();
 
-  const handleScan = useCallback(
-    async (decodedText: string) => {
-      setStatus("verifying");
-      setScanning(false);
+  async function handleSendCode(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("sending");
+    setMessage("");
 
-      try {
-        const response = await fetch("/api/verify-qr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: decodedText }),
-        });
+    try {
+      const res = await fetch("/api/verify-phone/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber }),
+      });
 
-        const data = await response.json();
+      const data = await res.json();
 
-        if (response.ok && data.success) {
-          setStatus("success");
-          setMessage("Verified! Redirecting...");
-          setTimeout(() => {
-            router.push("/markets");
-            router.refresh();
-          }, 1000);
-        } else {
-          setStatus("error");
-          setMessage(data.error || "Invalid QR code. Please try again.");
-        }
-      } catch {
+      if (res.ok && data.success) {
+        setStep("code");
+        setStatus("idle");
+      } else {
         setStatus("error");
-        setMessage("Something went wrong. Please try again.");
+        setMessage(data.error || "Failed to send code. Please try again.");
       }
-    },
-    [router]
-  );
+    } catch {
+      setStatus("error");
+      setMessage("Something went wrong. Please try again.");
+    }
+  }
 
-  const handleCameraError = useCallback((error: string) => {
-    setStatus("error");
-    setMessage(error);
-    setScanning(false);
-  }, []);
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("verifying");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/verify-phone/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber, code }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatus("success");
+        setMessage("Verified! Redirecting...");
+        setTimeout(() => {
+          router.push("/markets");
+          router.refresh();
+        }, 1000);
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Invalid code. Please try again.");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Something went wrong. Please try again.");
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <h1 className="text-3xl font-bold text-accent mb-2">Timbermarket</h1>
         <p className="text-muted text-sm mb-8">
-          Scan your invitation QR code to get started
+          Verify your phone number to get started
         </p>
 
-        {!scanning && status !== "success" && (
-          <button
-            onClick={() => {
-              setScanning(true);
-              setStatus("idle");
-              setMessage("");
-            }}
-            className="px-6 py-3 bg-accent hover:bg-accent-hover text-background font-medium rounded-lg transition-colors"
-          >
-            {status === "error" ? "Try Again" : "Scan QR Code"}
-          </button>
-        )}
+        {step === "phone" && (
+          <form onSubmit={handleSendCode} className="space-y-4">
+            <div className="text-left">
+              <label className="block text-sm text-muted mb-1">
+                Phone number
+              </label>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={handlePhoneChange}
+                placeholder="(123) 456-7890"
+                className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
+                required
+              />
+            </div>
 
-        {scanning && (
-          <div className="mt-4">
-            <QrScanner onScan={handleScan} onError={handleCameraError} />
+            {status === "error" && (
+              <p className="text-no text-sm">{message}</p>
+            )}
+
             <button
-              onClick={() => setScanning(false)}
-              className="mt-4 text-muted text-sm hover:text-foreground"
+              type="submit"
+              disabled={status === "sending"}
+              className="w-full py-2 bg-accent hover:bg-accent-hover text-background font-medium rounded-lg transition-colors disabled:opacity-50"
             >
-              Cancel
+              {status === "sending" ? "Sending..." : "Send code"}
             </button>
-          </div>
+          </form>
         )}
 
-        {status === "verifying" && (
-          <p className="mt-4 text-muted">Verifying...</p>
+        {step === "code" && status !== "success" && (
+          <form onSubmit={handleVerifyCode} className="space-y-4">
+            <p className="text-muted text-sm">
+              Code sent to {phoneNumber}
+            </p>
+            <div className="text-left">
+              <label className="block text-sm text-muted mb-1">
+                Verification code
+              </label>
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123456"
+                className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground text-center tracking-widest focus:outline-none focus:border-accent"
+                required
+                maxLength={6}
+              />
+            </div>
+
+            {status === "error" && (
+              <p className="text-no text-sm">{message}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={status === "verifying"}
+              className="w-full py-2 bg-accent hover:bg-accent-hover text-background font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {status === "verifying" ? "Verifying..." : "Verify"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStep("phone");
+                setCode("");
+                setStatus("idle");
+                setMessage("");
+              }}
+              className="text-muted text-sm hover:text-foreground"
+            >
+              Change phone number
+            </button>
+          </form>
         )}
 
         {status === "success" && (
-          <div className="mt-4">
-            <p className="text-yes font-medium">{message}</p>
-          </div>
-        )}
-
-        {status === "error" && !scanning && (
-          <p className="mt-4 text-no text-sm">{message}</p>
+          <p className="text-yes font-medium">{message}</p>
         )}
       </div>
     </div>

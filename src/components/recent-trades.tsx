@@ -13,9 +13,17 @@ interface RecentTradesProps {
 
 export default function RecentTrades({ trades, compact = false }: RecentTradesProps) {
   if (!trades || trades.length === 0) {
+    if (compact) {
+      return (
+        <div className="border-b border-border py-4">
+          <Link href="/trades" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">Recent Trades</Link>
+          <p className="text-sm text-muted">No trades yet.</p>
+        </div>
+      );
+    }
     return (
-      <div className="border-b border-border py-4">
-        <Link href="/trades" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">Recent Trades</Link>
+      <div className="bg-card border border-border rounded-lg p-4">
+        <h3 className="text-sm font-medium text-muted mb-3">Recent Trades</h3>
         <p className="text-sm text-muted">No trades yet.</p>
       </div>
     );
@@ -61,8 +69,8 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
   }
 
   return (
-    <div className="border-b border-border py-4">
-      <h3 className="text-sm text-muted mb-3">Recent Trades</h3>
+    <div className="bg-card border border-border rounded-lg p-4">
+      <h3 className="text-sm font-medium text-muted mb-3">Recent Trades</h3>
       <div className="space-y-2">
         {trades.map((trade) => (
           <div
