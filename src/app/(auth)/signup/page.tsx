@@ -54,11 +54,11 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 auth-page-background">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-accent mb-2">Timbermarket</h1>
-          <p className="text-muted text-sm">Create your account</p>
+          <h1 className="text-3xl font-bold text-accent mb-2">Register for Timbermarket</h1>
+          <p className="text-muted text-sm">Create your account. Make the markets efficient.</p>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">

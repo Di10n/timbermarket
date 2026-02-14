@@ -19,7 +19,7 @@ export default function Leaderboard({ leaders }: LeaderboardProps) {
   }
 
   return (
-    <div className="border border-border rounded-lg p-4" style={{ maxHeight: '500px' }}>
+    <div className="border border-border rounded-lg p-4 bg-gradient-to-br from-card via-card to-accent/5" style={{ maxHeight: '500px' }}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground">Leaderboard</h3>
         <Link href="/leaderboard" className="text-xs text-muted hover:text-accent transition-colors">

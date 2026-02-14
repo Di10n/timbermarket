@@ -23,13 +23,21 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [index, setIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
+  const isProgrammaticScroll = useRef(false);
   const count = marketsWithHistory?.length ?? 0;
 
   useEffect(() => {
     if (index < 0 || index >= count || !scrollRef.current) return;
     const container = scrollRef.current;
     const targetScroll = index * container.offsetWidth;
+
+    isProgrammaticScroll.current = true;
     container.scrollTo({ left: targetScroll, behavior: "smooth" });
+
+    // Reset flag after scroll animation completes
+    setTimeout(() => {
+      isProgrammaticScroll.current = false;
+    }, 500);
   }, [index, count]);
 
   useEffect(() => {
@@ -41,19 +49,30 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
     const container = scrollRef.current;
     if (!container) return;
 
+    let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
-      const scrollLeft = container.scrollLeft;
-      const slideWidth = container.offsetWidth;
-      const newIndex = Math.round(scrollLeft / slideWidth);
+      // Ignore scroll events during programmatic scrolling
+      if (isProgrammaticScroll.current) return;
 
-      if (newIndex !== index && newIndex >= 0 && newIndex < count) {
-        setIndex(newIndex);
-        setAutoPlay(false); // Stop autoplay when user manually scrolls
-      }
+      // Debounce to only update after scrolling settles
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollLeft = container.scrollLeft;
+        const slideWidth = container.offsetWidth;
+        const newIndex = Math.round(scrollLeft / slideWidth);
+
+        if (newIndex !== index && newIndex >= 0 && newIndex < count) {
+          setIndex(newIndex);
+          setAutoPlay(false); // Stop autoplay when user manually scrolls
+        }
+      }, 100);
     };
 
     container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => container.removeEventListener("scroll", handleScroll);
+    return () => {
+      clearTimeout(scrollTimeout);
+      container.removeEventListener("scroll", handleScroll);
+    };
   }, [index, count]);
 
   // Auto-play carousel
@@ -93,7 +112,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
       <div
         ref={scrollRef}
         className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory min-h-0 min-w-0 w-full scrollbar-hide"
-        style={{ height: 'clamp(300px, 50vh, 400px)', maxHeight: '50vh' }}
+        style={{ height: 'clamp(450px, 60vh, 650px)', maxHeight: '70vh' }}
       >
         {marketsWithHistory.map(({ market, history }, i) => (
           <div

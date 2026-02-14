@@ -36,11 +36,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 auth-page-background">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-accent mb-2">Timbermarket</h1>
-          <p className="text-muted text-sm">Prediction markets</p>
+          <h1 className="text-3xl font-bold text-accent mb-2">Sign in to Timbermarket</h1>
+          <p className="text-muted text-sm">Welcome back. The wisdom of the crowds awaits.</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">

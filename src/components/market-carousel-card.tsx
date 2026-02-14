@@ -96,12 +96,12 @@ export default function MarketCarouselCard({ market, history }: MarketCarouselCa
         </div>
 
         {/* Probability chart */}
-        <div className="flex-1 bg-muted/20 border border-border rounded-lg p-4 min-h-0" style={{ minHeight: '300px' }}>
-          <h4 className="text-sm text-muted mb-2">Probability</h4>
+        <div className="flex-1 bg-muted/20 border border-border rounded-lg p-4 min-h-0">
+          <h4 className="text-sm text-muted mb-3">Probability</h4>
           {rawData.length > 0 ? (
-            <div style={{ width: '100%', height: 'calc(100% - 30px)' }}>
+            <div style={{ width: '100%', height: '320px', minHeight: '320px', paddingBottom: '10px' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -5, bottom: 15 }}>
                 <defs>
                   <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.3} />
@@ -131,15 +131,18 @@ export default function MarketCarouselCard({ market, history }: MarketCarouselCa
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
+                  height={50}
                 />
                 <YAxis
                   domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
                   tickFormatter={(val) => `${val}%`}
                   stroke="var(--color-muted)"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  width={40}
+                  width={50}
+                  padding={{ top: 0, bottom: 0 }}
                 />
                 <Tooltip
                   contentStyle={{
