@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,6 +16,30 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    let email = identifier.trim();
+
+    // If input doesn't look like an email, resolve username to email
+    if (!email.includes("@")) {
+      try {
+        const res = await fetch("/api/auth/resolve-username", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: email }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "Invalid login credentials");
+          setLoading(false);
+          return;
+        }
+        email = data.email;
+      } catch {
+        setError("Something went wrong. Please try again.");
+        setLoading(false);
+        return;
+      }
+    }
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
@@ -43,11 +67,11 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm text-muted mb-1">Email</label>
+            <label className="block text-sm text-muted mb-1">Email or Username</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
               required
             />
