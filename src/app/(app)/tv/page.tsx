@@ -234,17 +234,17 @@ export default function TVPage() {
           <Image
             src="/timbermarket_logo.svg"
             alt="TimberMarket"
-            width={36}
-            height={36}
-            className="shrink-0"
+            width={44}
+            height={44}
+            className="shrink-0 w-11 h-11"
           />
-          <span className="text-accent font-bold text-lg font-[family-name:var(--font-gaegu)]">
+          <span className="text-accent font-bold text-2xl font-[family-name:var(--font-gaegu)]">
             TimberMarket
           </span>
         </Link>
         {userCount != null && (
-          <span className="text-foreground text-base font-medium tabular-nums">
-            {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""}
+          <span className="text-foreground text-2xl font-bold font-[family-name:var(--font-gaegu)] tabular-nums">
+            {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""} 👋
           </span>
         )}
       </div>
