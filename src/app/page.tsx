@@ -49,7 +49,12 @@ export default async function Home() {
             .eq("id", user.id)
             .single()
         : { data: null },
-      supabase.rpc("get_leaderboard", { p_limit: 10 }),
+      supabase
+        .from("profiles")
+        .select("username, balance")
+        .eq("is_approved", true)
+        .order("balance", { ascending: false })
+        .limit(10),
       user
         ? supabase
             .from("positions")
@@ -65,10 +70,7 @@ export default async function Home() {
     markets?: { question: string } | null;
   })[];
   const profile = profileResult.data as { username: string; balance: number } | null;
-  const leaderList =
-    leadersResult.error || !leadersResult.data
-      ? []
-      : (leadersResult.data as { username: string; balance: number }[]);
+  const leaderList = (leadersResult.data ?? []) as { username: string; balance: number }[];
 
   // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
   const userMarketIds = new Set(
