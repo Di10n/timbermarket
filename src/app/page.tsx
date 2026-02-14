@@ -28,7 +28,7 @@ export default async function Home() {
     }
   }
 
-  const [marketsResult, tradesResult, profileResult, leadersResult, positionsResult] =
+  const [marketsResult, tradesResult, profileResult, allProfilesResult, allPositionsResult, userPositionsResult] =
     await Promise.all([
       supabase
         .from("markets")
@@ -48,7 +48,14 @@ export default async function Home() {
             .eq("id", user.id)
             .single()
         : { data: null },
-      supabase.rpc("get_leaderboard", { p_limit: 10 }),
+      supabase
+        .from("profiles")
+        .select("id, username, balance")
+        .eq("is_approved", true),
+      supabase
+        .from("positions")
+        .select(`user_id, yes_shares, no_shares, markets(probability)`)
+        .or("yes_shares.gt.0,no_shares.gt.0"),
       user
         ? supabase
             .from("positions")
@@ -64,14 +71,24 @@ export default async function Home() {
     markets?: { question: string } | null;
   })[];
   const profile = profileResult.data as { username: string; balance: number } | null;
-  const leaderList =
-    leadersResult.error || !leadersResult.data
-      ? []
-      : (leadersResult.data as { username: string; balance: number }[]);
+
+  // Build leaderboard with portfolio values (mirrors leaderboard page logic)
+  const allProfiles = (allProfilesResult.data ?? []) as { id: string; username: string; balance: number }[];
+  const allPositions = (allPositionsResult.data ?? []) as any[];
+  const leaderList = allProfiles
+    .map((p) => {
+      const userPos = allPositions.filter((pos: any) => pos.user_id === p.id);
+      const posValue = userPos.reduce((sum: number, pos: any) => {
+        const prob = pos.markets?.probability ?? 0.5;
+        return sum + pos.yes_shares * prob + pos.no_shares * (1 - prob);
+      }, 0);
+      return { username: p.username, portfolio_value: p.balance + posValue };
+    })
+    .sort((a, b) => b.portfolio_value - a.portfolio_value);
 
   // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
   const userMarketIds = new Set(
-    ((positionsResult.data ?? []) as { market_id: string }[]).map((p) => p.market_id)
+    ((userPositionsResult.data ?? []) as { market_id: string }[]).map((p) => p.market_id)
   );
   const userTradedMarkets = topMarkets
     .filter((m) => userMarketIds.has(m.id))
@@ -110,13 +127,13 @@ export default async function Home() {
   }));
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen">
       <HomeTopBar user={user} profile={user ? profile : null} />
 
-      <main className="max-w-4xl mx-auto px-4 py-8 flex-1 w-full min-h-0">
+      <main className="max-w-4xl mx-auto px-4 py-8 w-full">
         <div className="flex gap-8 flex-col lg:flex-row">
           {/* Left: carousel + markets ~70% */}
-          <div className="flex-[7] min-w-0 flex flex-col min-h-0">
+          <div className="flex-[7] min-w-0">
             <HomeCarousel marketsWithHistory={carouselWithHistory} />
 
             <div className="mt-2">

@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { formatLeaves } from '@/lib/utils';
-import Link from 'next/link';
 import { LeaderboardEntry } from './leaderboard-entry';
 
 export const dynamic = 'force-dynamic';
@@ -162,12 +161,6 @@ export default async function LeaderboardPage() {
           </div>
         </div>
       )}
-
-      <p className="text-xs text-muted mt-8 text-center">
-        <Link href="/" className="hover:text-foreground transition-colors">
-          Back to home
-        </Link>
-      </p>
     </div>
   );
 }

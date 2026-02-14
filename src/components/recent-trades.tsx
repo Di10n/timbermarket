@@ -26,7 +26,7 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
       <div className="border-b border-border py-4">
         <Link href="/trades" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">Recent Trades</Link>
         <div className="space-y-2">
-          {trades.map((trade) => {
+          {trades.slice(0, 12).map((trade) => {
             const user = trade.profiles?.username ?? "Someone";
             const question = trade.markets?.question ?? "a market";
             const text =

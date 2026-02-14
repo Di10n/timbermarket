@@ -53,7 +53,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
   }
 
   return (
-    <div className="flex flex-col min-h-0 w-full h-full max-h-full">
+    <div className="flex flex-col min-h-0 w-full">
       <div
         ref={scrollRef}
         className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory min-h-0 min-w-0 w-full scrollbar-hide max-h-[180px]"
@@ -72,7 +72,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-4 py-4 shrink-0">
+      <div className="flex items-center justify-center gap-4 py-2 shrink-0">
         <button
           type="button"
           onClick={goPrev}
