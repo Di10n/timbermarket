@@ -717,12 +717,13 @@ function TVTradeRow({ trade }: { trade: TradeWithContext }) {
   const marketQuestion = trade.markets?.question ?? "Unknown market";
   const isYes = trade.outcome === "YES";
   const isRedeem = trade.type === "REDEEM";
+  const isBullish = trade.prob_after > trade.prob_before;
 
   return (
     <div className="tv-trade-row px-5 py-2.5 transition-colors relative">
       <div
         className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${
-          isRedeem ? "bg-accent" : isYes ? "bg-yes" : "bg-no"
+          isRedeem ? "bg-accent" : isBullish ? "bg-yes" : "bg-no"
         }`}
       />
       <div className="flex items-center justify-between mb-0.5">
