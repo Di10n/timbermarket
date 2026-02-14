@@ -22,15 +22,40 @@ interface ProbabilityChartProps {
 export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartProps) {
   if (!data || data.length === 0) return null;
 
-  const chartData = data.map((point) => ({
+  const rawData = data.map((point) => ({
     time: new Date(point.created_at).getTime(),
     probability: Math.round(point.probability * 100),
   }));
 
   const endTime = resolvedAt ? new Date(resolvedAt).getTime() : Date.now();
-  const last = chartData[chartData.length - 1];
+  const last = rawData[rawData.length - 1];
   if (last && last.time < endTime) {
-    chartData.push({ time: endTime, probability: last.probability });
+    rawData.push({ time: endTime, probability: last.probability });
+  }
+
+  // Interpolate points between data points so the cursor moves continuously
+  // instead of snapping to peaks. Since the chart is stepAfter, probability
+  // stays constant between changes.
+  const chartData: { time: number; probability: number }[] = [];
+  const TARGET_POINTS = 200;
+  if (rawData.length >= 2) {
+    const totalSpan = rawData[rawData.length - 1].time - rawData[0].time;
+    const step = totalSpan / TARGET_POINTS;
+    for (let i = 0; i < rawData.length - 1; i++) {
+      const curr = rawData[i];
+      const next = rawData[i + 1];
+      chartData.push(curr);
+      if (step > 0) {
+        let t = curr.time + step;
+        while (t < next.time) {
+          chartData.push({ time: t, probability: curr.probability });
+          t += step;
+        }
+      }
+    }
+    chartData.push(rawData[rawData.length - 1]);
+  } else {
+    chartData.push(...rawData);
   }
 
   return (
