@@ -7,13 +7,13 @@ import LogoutButton from "@/components/logout-button";
 
 interface HomeTopBarProps {
   user: { id: string } | null;
-  profile: { username: string; balance: number } | null;
+  profile: { username: string; balance: number; is_admin?: boolean } | null;
 }
 
 export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
   return (
     <nav className="bg-background sticky top-0 z-50">
-      <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between border-b border-border">
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-3">
             <Image
@@ -26,10 +26,10 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
             <span className="text-accent font-bold text-lg font-[family-name:var(--font-gaegu)]">TimberMarket</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <NavLink href="/markets">Markets</NavLink>
             <NavLink href="/portfolio">Portfolio</NavLink>
             <NavLink href="/leaderboard">Leaderboard</NavLink>
             <NavLink href="/trades">Trades</NavLink>
+            {profile?.is_admin && <NavLink href="/admin">Admin</NavLink>}
           </div>
         </div>
 

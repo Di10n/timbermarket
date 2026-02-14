@@ -45,7 +45,7 @@ export default async function Home() {
       user
         ? supabase
             .from("profiles")
-            .select("username, balance")
+            .select("username, balance, is_admin")
             .eq("id", user.id)
             .single()
         : { data: null },
@@ -71,7 +71,7 @@ export default async function Home() {
     profiles?: { username: string };
     markets?: { question: string } | null;
   })[];
-  const profile = profileResult.data as { username: string; balance: number } | null;
+  const profile = profileResult.data as { username: string; balance: number; is_admin?: boolean } | null;
 
   // Build leaderboard with portfolio values (mirrors leaderboard page logic)
   const allProfiles = (allProfilesResult.data ?? []) as { id: string; username: string; balance: number }[];

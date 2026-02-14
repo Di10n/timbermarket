@@ -22,7 +22,7 @@ export default async function Navbar() {
 
   return (
     <nav className="bg-background sticky top-0 z-50">
-      <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between border-b border-border">
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-3">
             <Image
