@@ -38,7 +38,6 @@ export async function updateSession(request: NextRequest) {
     "/api/auth/signup",
     "/",
     "/leaderboard",
-    "/trades",
   ];
   const isPublicRoute = publicRoutes.some((r) => pathname === r || pathname.startsWith(r + "/"));
 

@@ -39,7 +39,6 @@ export default async function Navbar() {
           <div className="hidden lg:flex items-center gap-4 text-sm">
             <NavLink href="/portfolio">Portfolio</NavLink>
             <NavLink href="/leaderboard">Leaderboard</NavLink>
-            <NavLink href="/trades">Trades</NavLink>
             {profile?.is_admin && <NavLink href="/admin">Admin</NavLink>}
           </div>
 
@@ -54,7 +53,6 @@ export default async function Navbar() {
               <nav className="absolute right-0 top-14 bg-card border border-border rounded-lg shadow-lg min-w-[180px] z-50 overflow-hidden">
                 <NavLink href="/portfolio" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Portfolio</NavLink>
                 <NavLink href="/leaderboard" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Leaderboard</NavLink>
-                <NavLink href="/trades" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Trades</NavLink>
                 {profile?.is_admin && <NavLink href="/admin" className="block px-4 py-3 hover:bg-card-hover">Admin</NavLink>}
               </nav>
             </details>
