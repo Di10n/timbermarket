@@ -410,6 +410,9 @@ BEGIN
     ELSE
       -- Percentage resolution
       v_resolution_value := p_resolution::numeric;
+      IF v_resolution_value < 0 OR v_resolution_value > 1 THEN
+        RAISE EXCEPTION 'Percentage resolution must be between 0 and 1';
+      END IF;
       v_payout := v_position.yes_shares * v_resolution_value
                 + v_position.no_shares * (1.0 - v_resolution_value);
     END IF;

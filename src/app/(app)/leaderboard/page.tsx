@@ -57,7 +57,8 @@ export default async function LeaderboardPage() {
       no_shares,
       markets (
         question,
-        probability
+        probability,
+        status
       )
     `
     )
@@ -70,7 +71,7 @@ export default async function LeaderboardPage() {
   // Calculate portfolio values for each user
   const leaderboard: LeaderboardData[] = (profiles || []).map((profile) => {
     const userPositions = (positions || [])
-      .filter((pos: any) => pos.user_id === profile.id)
+      .filter((pos: any) => pos.user_id === profile.id && pos.markets?.status === 'active')
       .map((pos: any) => ({
         market_id: pos.market_id,
         market_question: pos.markets?.question || 'Unknown Market',

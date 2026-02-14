@@ -50,6 +50,7 @@ export default function TradePanel({
   let previewShares = 0;
   let previewProb = market.probability;
   let previewPayout = 0;
+  let previewRedeemed = 0;
 
   if (numAmount > 0 && isActive) {
     if (mode === "BUY") {
@@ -67,7 +68,12 @@ export default function TradePanel({
         numAmount,
         outcome
       );
-      previewPayout = previewShares; // Each share pays 1 leaf if wins
+      // Account for auto-redemption of offsetting positions
+      const existingOpposite = outcome === "YES"
+        ? (position?.no_shares ?? 0)
+        : (position?.yes_shares ?? 0);
+      previewRedeemed = Math.min(previewShares, existingOpposite);
+      previewPayout = previewShares - previewRedeemed;
     } else {
       const maxShares =
         outcome === "YES"
@@ -247,8 +253,16 @@ export default function TradePanel({
             <>
               <div className="flex justify-between">
                 <span className="text-muted">Shares</span>
-                <span>{formatShares(previewShares)}</span>
+                <span>{formatShares(previewShares - previewRedeemed)}</span>
               </div>
+              {previewRedeemed > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted">Auto-redeemed</span>
+                  <span className="text-yes">
+                    +{formatLeaves(previewRedeemed)} <LeafIcon />
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted">Potential payout</span>
                 <span className="text-yes">

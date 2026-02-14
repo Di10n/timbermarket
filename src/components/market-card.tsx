@@ -5,7 +5,7 @@ import { formatProbability, timeAgo, formatLeaves } from "@/lib/utils";
 import type { Market } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
-export default function MarketCard({ market }: { market: Market }) {
+export default function MarketCard({ market, traderCount }: { market: Market; traderCount?: number }) {
   const prob = market.probability;
   const probPercent = Math.round(prob * 100);
   const router = useRouter();
@@ -78,6 +78,12 @@ export default function MarketCard({ market }: { market: Market }) {
         {/* Footer with volume */}
         <div className="flex items-center gap-3 text-sm text-muted">
           <span className="font-medium">{formatLeaves(market.volume)} Vol.</span>
+          {traderCount != null && (
+            <>
+              <span>•</span>
+              <span>{traderCount} {traderCount === 1 ? "trader" : "traders"}</span>
+            </>
+          )}
           <span>•</span>
           <span>{timeAgo(market.created_at)}</span>
           {market.status === "resolved" && (

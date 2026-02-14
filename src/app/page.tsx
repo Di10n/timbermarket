@@ -55,7 +55,7 @@ export default async function Home() {
         .eq("is_approved", true),
       serviceClient
         .from("positions")
-        .select("user_id, yes_shares, no_shares, markets(probability)")
+        .select("user_id, market_id, yes_shares, no_shares, markets(probability)")
         .or("yes_shares.gt.0,no_shares.gt.0"),
       user
         ? supabase
@@ -87,6 +87,12 @@ export default async function Home() {
     })
     .sort((a, b) => b.portfolio_value - a.portfolio_value)
     .slice(0, 5);
+
+  // Count traders per market from positions
+  const traderCountMap = new Map<string, number>();
+  for (const pos of allPositions) {
+    traderCountMap.set(pos.market_id, (traderCountMap.get(pos.market_id) ?? 0) + 1);
+  }
 
   // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
   const userMarketIds = new Set(
@@ -153,7 +159,7 @@ export default async function Home() {
             <h2 className="text-2xl font-bold text-foreground mb-4 lg:mb-6">Markets</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {topMarkets.map((market) => (
-                <MarketCard key={market.id} market={market} />
+                <MarketCard key={market.id} market={market} traderCount={traderCountMap.get(market.id) ?? 0} />
               ))}
             </div>
           </div>

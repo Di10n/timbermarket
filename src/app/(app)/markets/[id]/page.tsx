@@ -4,7 +4,7 @@ import TradePanel from "@/components/trade-panel";
 import ProbabilityChart from "@/components/probability-chart";
 import RecentTrades from "@/components/recent-trades";
 import MarketComments from "@/components/market-comments";
-import { formatProbability, timeAgo } from "@/lib/utils";
+import { formatProbability, timeAgo, formatLeaves } from "@/lib/utils";
 import type { Market, Position, Trade, CommentWithProfile } from "@/lib/types";
 
 export default async function MarketPage({
@@ -29,7 +29,7 @@ export default async function MarketPage({
   if (!market) notFound();
 
   // Fetch user's position, probability history, recent trades, comments, and profile in parallel
-  const [positionResult, historyResult, tradesResult, commentsResult, profileResult] =
+  const [positionResult, historyResult, tradesResult, commentsResult, profileResult, traderCountResult] =
     await Promise.all([
       user
         ? supabase
@@ -63,12 +63,18 @@ export default async function MarketPage({
             .eq("id", user.id)
             .single()
         : { data: null },
+      supabase
+        .from("positions")
+        .select("user_id")
+        .eq("market_id", id)
+        .or("yes_shares.gt.0,no_shares.gt.0"),
     ]);
 
   const typedMarket = market as Market;
   const position = positionResult.data as Position | null;
   const profileData = profileResult.data as { balance: number; is_admin: boolean } | null;
   const balance = profileData?.balance ?? 0;
+  const traderCount = traderCountResult.data?.length ?? 0;
 
   // Merge commenter positions into comments
   const commentsData = (commentsResult.data ?? []) as CommentWithProfile[];
@@ -105,6 +111,10 @@ export default async function MarketPage({
               <p className="text-muted text-sm mb-2">{typedMarket.description}</p>
             )}
             <div className="flex items-center gap-3 text-sm text-muted">
+              <span>{formatLeaves(typedMarket.volume)} Vol.</span>
+              <span>•</span>
+              <span>{traderCount} {traderCount === 1 ? "trader" : "traders"}</span>
+              <span>•</span>
               <span>Created {timeAgo(typedMarket.created_at)}</span>
               {typedMarket.status === "resolved" && (
                 <span className="px-2 py-0.5 bg-border/50 rounded text-foreground text-xs font-medium">

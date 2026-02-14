@@ -53,6 +53,10 @@ DECLARE
   v_market_id uuid;
   v_pool numeric;
 BEGIN
+  IF p_initial_prob <= 0 OR p_initial_prob >= 1 THEN
+    RAISE EXCEPTION 'Initial probability must be between 0 and 1 exclusive';
+  END IF;
+
   -- Pool starts with equal reserves; p parameter encodes the probability
   v_pool := p_ante / 2.0;
 
