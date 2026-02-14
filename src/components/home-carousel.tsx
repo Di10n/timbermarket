@@ -56,7 +56,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
     <div className="flex flex-col min-h-0 w-full h-full max-h-full">
       <div
         ref={scrollRef}
-        className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory min-h-0 min-w-0 w-full scrollbar-hide max-h-[140px]"
+        className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory min-h-0 min-w-0 w-full scrollbar-hide max-h-[180px]"
       >
         {marketsWithHistory.map(({ market, history }, i) => (
           <div

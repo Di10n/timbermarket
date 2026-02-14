@@ -32,36 +32,32 @@ export function LeaderboardEntry({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getRankDisplay = () => {
-    if (rank === 1) return <span className="text-2xl font-bold">🥇</span>;
-    if (rank === 2) return <span className="text-2xl font-bold">🥈</span>;
-    if (rank === 3) return <span className="text-2xl font-bold">🥉</span>;
-    return <span className="text-lg font-semibold text-muted-foreground">#{rank}</span>;
+    if (rank <= 3) {
+      return (
+        <span className="text-sm font-bold text-accent">#{rank}</span>
+      );
+    }
+    return <span className="text-sm text-muted">#{rank}</span>;
   };
 
   const positionsValue = portfolioValue - balance;
 
   return (
-    <div
-      className={`rounded-lg border ${
-        isCurrentUser
-          ? 'bg-primary/10 border-primary'
-          : 'bg-card border-border'
-      }`}
-    >
+    <div className={isCurrentUser ? 'bg-accent/5' : ''}>
       {/* Main row */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center gap-4 p-4 text-left hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center gap-4 py-4 px-2 text-left hover:bg-card-hover/30 transition-colors border-b border-border"
       >
         {/* Rank */}
-        <div className="flex-shrink-0 w-12 text-center">{getRankDisplay()}</div>
+        <div className="w-8 shrink-0 text-center tabular-nums">{getRankDisplay()}</div>
 
         {/* Username */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{username}</span>
+            <span className="text-foreground font-medium truncate">{username}</span>
             {isCurrentUser && (
-              <span className="text-xs px-2 py-0.5 bg-primary text-primary-foreground rounded">
+              <span className="text-xs px-1.5 py-0.5 bg-accent/20 text-accent">
                 You
               </span>
             )}
@@ -69,20 +65,20 @@ export function LeaderboardEntry({
         </div>
 
         {/* Portfolio breakdown */}
-        <div className="flex-shrink-0 text-right space-y-1">
-          <div className="font-bold text-xl">{formatLeaves(portfolioValue)}</div>
-          <div className="text-xs text-muted-foreground space-x-1">
+        <div className="shrink-0 text-right">
+          <div className="font-bold text-foreground">{formatLeaves(portfolioValue)}</div>
+          <div className="text-xs text-muted">
             <span>Bal: {formatLeaves(balance)}</span>
-            <span className="text-muted-foreground/50">|</span>
+            {' · '}
             <span>Pos: {formatLeaves(positionsValue)}</span>
           </div>
         </div>
 
         {/* Expand indicator */}
         {positions.length > 0 && (
-          <div className="flex-shrink-0 w-6 text-muted-foreground">
+          <div className="shrink-0 w-5 text-muted">
             <svg
-              className={`w-5 h-5 transition-transform ${
+              className={`w-4 h-4 transition-transform ${
                 isExpanded ? 'rotate-180' : ''
               }`}
               fill="none"
@@ -102,8 +98,8 @@ export function LeaderboardEntry({
 
       {/* Expanded positions */}
       {isExpanded && positions.length > 0 && (
-        <div className="border-t border-border px-4 py-3 space-y-2">
-          <div className="text-sm font-medium text-muted-foreground mb-2">
+        <div className="border-b border-border px-2 py-3">
+          <div className="text-xs text-muted mb-2">
             Positions ({positions.length} markets)
           </div>
           {positions.map((position) => {
@@ -116,33 +112,33 @@ export function LeaderboardEntry({
               <Link
                 key={position.market_id}
                 href={`/markets/${position.market_id}`}
-                className="block p-3 bg-muted/50 rounded hover:bg-muted transition-colors"
+                className="block py-2 px-2 hover:bg-card-hover/30 transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
+                    <div className="text-sm font-medium text-foreground truncate">
                       {position.market_question}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xs text-muted mt-1">
                       {position.yes_shares > 0 && (
-                        <span className="mr-3">
+                        <span className="text-yes mr-3">
                           YES: {position.yes_shares.toFixed(2)} shares (
                           {formatLeaves(yesValue)})
                         </span>
                       )}
                       {position.no_shares > 0 && (
-                        <span>
+                        <span className="text-no">
                           NO: {position.no_shares.toFixed(2)} shares (
                           {formatLeaves(noValue)})
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="flex-shrink-0 text-right">
-                    <div className="text-sm font-semibold">
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-medium text-foreground">
                       {formatLeaves(totalValue)}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted">
                       @{(position.market_probability * 100).toFixed(0)}%
                     </div>
                   </div>
@@ -154,7 +150,7 @@ export function LeaderboardEntry({
       )}
 
       {isExpanded && positions.length === 0 && (
-        <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
+        <div className="border-b border-border px-2 py-3 text-sm text-muted">
           No active positions
         </div>
       )}

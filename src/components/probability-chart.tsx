@@ -65,8 +65,8 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="probGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+              <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="var(--color-yes)" stopOpacity={0} />
             </linearGradient>
           </defs>
           <XAxis
@@ -79,7 +79,7 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
                 day: "numeric",
               })
             }
-            stroke="#71717a"
+            stroke="var(--color-muted)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -87,7 +87,7 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
           <YAxis
             domain={[0, 100]}
             tickFormatter={(val) => `${val}%`}
-            stroke="#71717a"
+            stroke="var(--color-muted)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -95,10 +95,11 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#18181b",
-              border: "1px solid #3f3f46",
+              backgroundColor: "var(--color-card)",
+              border: "1px solid var(--color-border)",
               borderRadius: "8px",
               fontSize: "12px",
+              color: "var(--color-foreground)",
             }}
             labelFormatter={(val) => new Date(val).toLocaleString()}
             formatter={(value) => [`${value}%`, "Probability"]}
@@ -106,7 +107,7 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
           <Area
             type="stepAfter"
             dataKey="probability"
-            stroke="#10b981"
+            stroke="var(--color-yes)"
             fill="url(#probGradient)"
             strokeWidth={2}
           />

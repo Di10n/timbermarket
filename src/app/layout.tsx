@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Timbermarket",
+  title: "TimberMarket",
   description: "Prediction market platform",
+  icons: {
+    icon: "/timbermarket_logo.svg",
+  },
 };
 
 export default function RootLayout({

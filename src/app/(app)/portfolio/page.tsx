@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { formatLeaves } from "@/lib/utils";
 import PortfolioTabs from "@/components/portfolio-tabs";
 import type { PositionWithMarket, TradeWithMarket } from "@/lib/types";
 
@@ -50,31 +51,40 @@ export default async function PortfolioPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-6">Portfolio</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Portfolio</h1>
+        <p className="text-sm text-muted">
+          Your positions, trade history, and balance overview.
+        </p>
+      </div>
 
       {/* Portfolio summary */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted mb-1">Total Value</p>
-          <p className="text-2xl font-bold text-accent">
-            {Math.round(totalValue).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted mb-1">Balance</p>
-          <p className="text-2xl font-bold">
-            {Math.round(balance).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted mb-1">In Positions</p>
-          <p className="text-2xl font-bold">
-            {Math.round(positionsValue).toLocaleString()}
-          </p>
+      <div className="border-t border-border">
+        <div className="grid grid-cols-3 divide-x divide-border">
+          <div className="py-4 px-2">
+            <p className="text-xs text-muted mb-1">Total Value</p>
+            <p className="text-2xl font-bold text-accent">
+              {formatLeaves(totalValue)} <span className="text-sm font-normal text-muted">leaves</span>
+            </p>
+          </div>
+          <div className="py-4 px-4">
+            <p className="text-xs text-muted mb-1">Balance</p>
+            <p className="text-2xl font-bold text-foreground">
+              {formatLeaves(balance)} <span className="text-sm font-normal text-muted">leaves</span>
+            </p>
+          </div>
+          <div className="py-4 px-4">
+            <p className="text-xs text-muted mb-1">In Positions</p>
+            <p className="text-2xl font-bold text-foreground">
+              {formatLeaves(positionsValue)} <span className="text-sm font-normal text-muted">leaves</span>
+            </p>
+          </div>
         </div>
       </div>
 
-      <PortfolioTabs positions={positions} trades={trades} />
+      <div className="mt-8 border-t border-border pt-6">
+        <PortfolioTabs positions={positions} trades={trades} />
+      </div>
     </div>
   );
 }
