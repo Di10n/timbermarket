@@ -11,7 +11,7 @@ Timbermarket is a prediction market platform built for TreeHacks 2026 hackathon.
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
 - **Deployment**: Vercel
-- **QR Code Scanning**: html5-qrcode
+- **Phone Verification**: Twilio Verify API
 - **Charts**: Recharts
 
 ## Branch Strategy
@@ -23,9 +23,9 @@ Timbermarket is a prediction market platform built for TreeHacks 2026 hackathon.
 ## Core Features
 
 ### 1. Authentication & Onboarding
-- Users sign up with username, email, password
-- QR code verification required for approval
-- QR code hash checked against `approved_codes` table
+- Users sign up with username and password (no email)
+- Synthetic email (`{username}@timbermarket.lol`) used internally for Supabase Auth
+- Phone number verification via Twilio Verify API required for approval
 - Approved users receive 1000 starting leaves
 - Location: `src/app/(auth)/`
 
@@ -67,15 +67,13 @@ Timbermarket is a prediction market platform built for TreeHacks 2026 hackathon.
 ## Database Schema
 
 ### Tables
-- **profiles**: User accounts (balance, username, is_admin, is_approved)
-- **approved_codes**: QR code hashes for verification (SHA-256)
+- **profiles**: User accounts (balance, username, phone_number, is_admin, is_approved)
 - **markets**: Questions, pool state, probability, status, resolution
 - **trades**: Immutable ledger of all buy/sell actions
 - **positions**: Aggregated per-user-per-market holdings
 - **probability_history**: Time series for charts
 
 ### Key Functions (SECURITY DEFINER)
-- `verify_qr_code(user_id, code_hash)`: Approve user, grant 1000 leaves
 - `create_market(creator_id, question, description, initial_prob, ante)`: Create new market
 - `execute_trade(user_id, market_id, outcome, amount)`: Atomic buy trade
 - `execute_sell(user_id, market_id, outcome, shares)`: Atomic sell trade (binary search for cost)
@@ -94,12 +92,13 @@ Timbermarket is a prediction market platform built for TreeHacks 2026 hackathon.
 - `src/components/market-card.tsx`: Market preview card
 - `src/components/trade-panel.tsx`: Buy/sell interface
 - `src/components/probability-chart.tsx`: Recharts-based probability history
-- `src/components/qr-scanner.tsx`: QR code scanner component
 - `src/components/admin-panel.tsx`: Admin controls
 
 ### API Routes
 - `src/app/api/trade/route.ts`: Execute buy trades
-- `src/app/api/verify-qr/route.ts`: QR code verification endpoint
+- `src/app/api/auth/signup/route.ts`: Server-side signup (creates user with synthetic email)
+- `src/app/api/verify-phone/send/route.ts`: Send phone verification OTP via Twilio
+- `src/app/api/verify-phone/check/route.ts`: Verify phone OTP and approve user
 - `src/app/api/admin/create-market/route.ts`: Create new market
 - `src/app/api/admin/resolve-market/route.ts`: Resolve market
 
@@ -114,7 +113,7 @@ Timbermarket is a prediction market platform built for TreeHacks 2026 hackathon.
 - `supabase/migrations/001_create_tables.sql`: Schema
 - `supabase/migrations/002_create_rls_policies.sql`: RLS policies
 - `supabase/migrations/003_create_functions.sql`: PostgreSQL functions
-- `supabase/migrations/004_add_notes_to_approved_codes.sql`: Additional fields
+- `supabase/migrations/009_phone_verification.sql`: Phone number column, drops QR code tables
 
 ## TreeHacks Context
 
@@ -137,8 +136,7 @@ Timbermarket is a prediction market platform built for TreeHacks 2026 hackathon.
 ### Planned Features
 - TV display route (`/tv`) for leaderboard and recent activity
 - Market self-registration form for teams
-- QR posters linking to registration
-- Email/Slack notifications
+- Slack notifications
 
 ## Development Workflow
 
@@ -152,6 +150,9 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_VERIFY_SERVICE_SID`
 
 ### Deployment
 - Deployed on Vercel

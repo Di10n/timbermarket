@@ -35,9 +35,8 @@ export async function updateSession(request: NextRequest) {
     "/",
     "/login",
     "/signup",
-    "/auth/callback",
-    "/api/auth/resolve-username",
-    "/markets",
+    "/api/auth/signup",
+    "/",
     "/leaderboard",
     "/trades",
   ];

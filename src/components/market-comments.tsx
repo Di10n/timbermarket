@@ -62,8 +62,8 @@ export default function MarketComments({
   }
 
   return (
-    <div className="border-b border-border py-4">
-      <h3 className="text-sm text-muted mb-3">Comments</h3>
+    <div className="bg-card border border-border rounded-lg p-4">
+      <h3 className="text-sm font-medium text-muted mb-3">Comments</h3>
 
       {currentUserId && (
         <form onSubmit={handleSubmit} className="mb-4">

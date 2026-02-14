@@ -18,7 +18,7 @@ export default async function AdminPage() {
     .eq("id", user.id)
     .single();
 
-  if (!profile?.is_admin) redirect("/markets");
+  if (!profile?.is_admin) redirect("/");
 
   const [{ data: markets }, { data: featured }] = await Promise.all([
     supabase
