@@ -50,6 +50,8 @@ export default async function Navbar() {
             </Link>
             <NavLink href="/markets">Markets</NavLink>
             <NavLink href="/portfolio">Portfolio</NavLink>
+            <NavLink href="/leaderboard">Leaderboard</NavLink>
+            <NavLink href="/trades">Trades</NavLink>
             {profile?.is_admin && (
               <NavLink href="/admin">Admin</NavLink>
             )}
