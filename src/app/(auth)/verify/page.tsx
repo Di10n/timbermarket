@@ -75,7 +75,7 @@ export default function VerifyPage() {
         setStatus("success");
         setMessage("Verified! Redirecting...");
         setTimeout(() => {
-          router.push("/markets");
+          router.push("/");
           router.refresh();
         }, 1000);
       } else {

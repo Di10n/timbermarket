@@ -13,7 +13,7 @@ export default function PaginatedMarketList({ markets }: { markets: Market[] }) 
       {markets.length > 5 && (
         <div className="pt-4 px-2 text-center">
           <Link
-            href="/markets"
+            href="/"
             className="text-sm text-muted hover:text-foreground transition-colors"
           >
             More markets

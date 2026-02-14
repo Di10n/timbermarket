@@ -7,6 +7,9 @@ DROP POLICY IF EXISTS "Approved users can read markets" ON public.markets;
 DROP POLICY IF EXISTS "Approved users can view trades" ON public.trades;
 DROP POLICY IF EXISTS "Approved users can view probability history" ON public.probability_history;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own username" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can create markets" ON public.markets;
+DROP POLICY IF EXISTS "Admins can update markets" ON public.markets;
 
 -- ============================================
 -- profiles: Public can view basic info

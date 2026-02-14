@@ -174,7 +174,7 @@ export default function TVPage() {
     <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-3">
-          <Link href="/markets" className="text-accent font-bold text-xl">
+          <Link href="/" className="text-accent font-bold text-xl">
             Timbermarket
           </Link>
           <span className="text-muted text-sm font-medium tracking-wide uppercase">

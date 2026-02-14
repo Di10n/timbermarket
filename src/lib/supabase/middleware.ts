@@ -36,7 +36,7 @@ export async function updateSession(request: NextRequest) {
     "/login",
     "/signup",
     "/api/auth/signup",
-    "/markets",
+    "/",
     "/leaderboard",
     "/trades",
   ];
