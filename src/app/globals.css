@@ -243,6 +243,24 @@ body {
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 85%, transparent 100%);
 }
 
+/* Ticker tape scroll for Other Markets */
+@keyframes tv-ticker-scroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(calc(-1 * var(--ticker-distance)));
+  }
+}
+
+.tv-ticker-scroll {
+  animation: tv-ticker-scroll 20s linear infinite;
+}
+
+.tv-ticker-scroll:hover {
+  animation-play-state: paused;
+}
+
 /* Trade row hover */
 .tv-trade-row:hover {
   background: color-mix(in srgb, var(--color-card-hover) 50%, transparent);

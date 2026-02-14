@@ -38,7 +38,7 @@ export default async function Home() {
         .select("*")
         .in("status", ["active", "resolved"])
         .order("volume", { ascending: false })
-        .limit(12),
+        .limit(30),
       supabase
         .from("trades")
         .select("*, profiles(username), markets(question)")

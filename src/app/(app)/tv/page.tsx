@@ -21,8 +21,7 @@ import {
 
 const RANKING_WINDOW = 10 * 60 * 1000; // 10 minutes
 const POLL_INTERVAL = 3_000; // poll every 3 seconds
-const TOP_N = 10;
-const LIST_COUNT = 6;
+const TICKER_SPEED = 60; // pixels per second
 
 interface TradeWithContext extends Trade {
   profiles?: { username: string };
@@ -49,7 +48,6 @@ interface ProbPoint {
 
 export default function TVPage() {
   const [markets, setMarkets] = useState<RankedMarket[]>([]);
-  const [top10, setTop10] = useState<RankedMarket[]>([]);
   const [featuredMarket, setFeaturedMarket] = useState<RankedMarket | null>(
     null
   );
@@ -126,15 +124,9 @@ export default function TVPage() {
           traderCount: traderMap[m.id] ?? 0,
         })
       );
-      ranked.sort((a, b) => {
-        if (b.recentVolume !== a.recentVolume)
-          return b.recentVolume - a.recentVolume;
-        return b.volume - a.volume;
-      });
+      ranked.sort((a, b) => a.question.localeCompare(b.question));
 
       setMarkets(ranked);
-      const top = ranked.slice(0, TOP_N);
-      setTop10(top);
 
       const featuredRow = featuredRes.data as Market | null;
       const featured =
@@ -147,7 +139,7 @@ export default function TVPage() {
           : null;
       setFeaturedMarket(featured);
 
-      const ids = [...top.map((m) => m.id)];
+      const ids = ranked.map((m) => m.id);
       if (featured && !ids.includes(featured.id)) ids.push(featured.id);
       if (ids.length > 0) {
         const { data: historyRows } = await supabase
@@ -403,27 +395,22 @@ export default function TVPage() {
             )}
           </div>
 
-          {/* Top markets list */}
+          {/* Top markets list — ticker tape */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <div className="px-6 pt-5 pb-3 shrink-0">
               <h3 className="text-lg font-bold uppercase tracking-widest text-muted">
-                Other Markets
+                Other Markets ({markets.filter((m) => !featuredMarket || m.id !== featuredMarket.id).length})
               </h3>
             </div>
-            <div className="flex-1 flex flex-col justify-start min-h-0 overflow-hidden px-4 pb-3 gap-3">
-              {top10.length === 0 ? (
-                <div className="flex items-center justify-center flex-1 min-h-0">
-                  <p className="text-muted text-xl">No active markets</p>
-                </div>
-              ) : (
-                top10.filter((m) => !featuredMarket || m.id !== featuredMarket.id).slice(0, LIST_COUNT).map((market) => (
-                  <TVMarketBlock
-                    key={market.id}
-                    market={market}
-                  />
-                ))
-              )}
-            </div>
+            {markets.filter((m) => !featuredMarket || m.id !== featuredMarket.id).length === 0 ? (
+              <div className="flex items-center justify-center flex-1 min-h-0">
+                <p className="text-muted text-xl">No active markets</p>
+              </div>
+            ) : (
+              <TVMarketTicker
+                markets={markets.filter((m) => !featuredMarket || m.id !== featuredMarket.id)}
+              />
+            )}
           </div>
         </div>
 
@@ -501,11 +488,53 @@ export default function TVPage() {
   );
 }
 
-function TVMarketBlock({
-  market,
-}: {
-  market: RankedMarket;
-}) {
+function TVMarketTicker({ markets }: { markets: RankedMarket[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [copies, setCopies] = useState(2);
+
+  useEffect(() => {
+    if (!innerRef.current || !containerRef.current) return;
+    const children = innerRef.current.children;
+    if (children.length === 0) return;
+    const singleCopy = children[0] as HTMLElement;
+    const h = singleCopy.offsetHeight;
+    const containerH = containerRef.current.offsetHeight;
+    setContentHeight(h);
+    // Need enough copies so that after scrolling one copy off the top,
+    // the remaining copies still fill the visible container.
+    setCopies(h > 0 ? Math.ceil(containerH / h) + 1 : 2);
+  }, [markets]);
+
+  const duration = contentHeight > 0 ? contentHeight / TICKER_SPEED : 20;
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex-1 min-h-0 overflow-hidden relative px-4 pb-3"
+    >
+      <div
+        ref={innerRef}
+        className="tv-ticker-scroll"
+        style={{
+          animationDuration: `${duration}s`,
+          ["--ticker-distance" as string]: `${contentHeight}px`,
+        }}
+      >
+        {Array.from({ length: copies }, (_, i) => (
+          <div key={i} className="flex flex-col gap-3 pb-3">
+            {markets.map((market) => (
+              <TVMarketTickerItem key={`${i}-${market.id}`} market={market} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TVMarketTickerItem({ market }: { market: RankedMarket }) {
   const yesPercent = Math.round(market.probability * 100);
   const noPercent = 100 - yesPercent;
 
