@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/timbermarket_logo.svg",
   },
+  openGraph: {
+    images: ["/timbermarketbackground.jpg"],
+  },
 };
 
 export const viewport = {
