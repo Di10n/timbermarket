@@ -38,6 +38,12 @@ export default async function Navbar() {
             >
               Portfolio
             </Link>
+            <Link
+              href="/leaderboard"
+              className="text-muted hover:text-foreground transition-colors"
+            >
+              Leaderboard
+            </Link>
             {profile?.is_admin && (
               <Link
                 href="/admin"
