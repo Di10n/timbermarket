@@ -135,3 +135,26 @@ body {
   animation: leaf-wiggle 0.5s ease-in-out infinite;
   display: inline-block;
 }
+
+/* Ambient falling leaves for TV page */
+@keyframes ambient-leaf-fall {
+  0% {
+    transform: translateY(-60px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(105vh) rotate(360deg);
+  }
+}
+@keyframes ambient-leaf-sway {
+  0%, 100% { transform: translateX(0px); }
+  25% { transform: translateX(30px); }
+  50% { transform: translateX(-20px); }
+  75% { transform: translateX(25px); }
+}
+.ambient-leaf-fall {
+  animation: ambient-leaf-fall var(--fall-duration, 10s) linear forwards;
+}
+.ambient-leaf-sway {
+  animation: ambient-leaf-sway var(--sway-duration, 4s) ease-in-out infinite;
+  animation-delay: var(--sway-delay, 0s);
+}
