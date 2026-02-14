@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { formatLeaves } from "@/lib/utils";
 import LogoutButton from "./logout-button";
 import ThemeToggle from "./theme-toggle";
+import NavLink from "./nav-link";
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -47,13 +48,10 @@ export default async function Navbar() {
             >
               Leaderboard
             </Link>
+            <NavLink href="/markets">Markets</NavLink>
+            <NavLink href="/portfolio">Portfolio</NavLink>
             {profile?.is_admin && (
-              <Link
-                href="/admin"
-                className="text-muted hover:text-foreground transition-colors"
-              >
-                Admin
-              </Link>
+              <NavLink href="/admin">Admin</NavLink>
             )}
           </div>
         </div>
