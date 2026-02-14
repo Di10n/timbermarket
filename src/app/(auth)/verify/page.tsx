@@ -176,6 +176,43 @@ export default function VerifyPage() {
         {status === "success" && (
           <p className="text-yes font-medium">{message}</p>
         )}
+
+        {process.env.NODE_ENV === "development" && status !== "success" && (
+          <div className="mt-8 pt-6 border-t border-border">
+            <p className="text-muted text-xs mb-2">Development only</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setStatus("verifying");
+                setMessage("");
+                try {
+                  const res = await fetch("/api/verify-phone/bypass", {
+                    method: "POST",
+                  });
+                  const data = await res.json();
+                  if (res.ok && data.success) {
+                    setStatus("success");
+                    setMessage("Bypassed! Redirecting...");
+                    setTimeout(() => {
+                      router.push("/");
+                      router.refresh();
+                    }, 1000);
+                  } else {
+                    setStatus("error");
+                    setMessage(data.error || "Bypass failed.");
+                  }
+                } catch {
+                  setStatus("error");
+                  setMessage("Bypass failed.");
+                }
+              }}
+              disabled={status === "verifying"}
+              className="w-full py-2 bg-card border border-border hover:border-accent text-muted hover:text-foreground font-medium rounded-lg transition-colors disabled:opacity-50 text-sm"
+            >
+              {status === "verifying" ? "Bypassing..." : "Skip verification (dev)"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
