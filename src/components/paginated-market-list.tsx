@@ -6,12 +6,12 @@ export default function PaginatedMarketList({ markets }: { markets: Market[] }) 
   const visible = markets.slice(0, 5);
 
   return (
-    <div className="border-t border-border">
+    <div>
       {visible.map((market) => (
         <MarketCard key={market.id} market={market} />
       ))}
       {markets.length > 5 && (
-        <div className="pt-4 px-2">
+        <div className="pt-4 px-2 text-center">
           <Link
             href="/markets"
             className="text-sm text-muted hover:text-foreground transition-colors"
