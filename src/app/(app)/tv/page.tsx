@@ -32,7 +32,6 @@ interface TradeWithContext extends Trade {
 
 interface RankedMarket extends Market {
   recentVolume: number;
-  recentShares: number; // total shares traded in window (what we call "recent trades")
 }
 
 interface ProbPoint {
@@ -51,40 +50,46 @@ export default function TVPage() {
   >({});
   const [trades, setTrades] = useState<TradeWithContext[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fallingLeaves, setFallingLeaves] = useState<
+    { key: string; count: number }[]
+  >([]);
+  const [userCount, setUserCount] = useState<number | null>(null);
   const supabaseRef = useRef(createClient());
+  const previousFirstTradeIdRef = useRef<string | null>(null);
 
   const fetchAndRank = useCallback(async () => {
     const supabase = supabaseRef.current;
     const since = new Date(Date.now() - RANKING_WINDOW).toISOString();
 
-    const [marketsRes, featuredRes, windowRes, feedRes] = await Promise.all([
-      supabase.from("markets").select("*").eq("status", "active"),
-      supabase
-        .from("markets")
-        .select("*")
-        .eq("status", "active")
-        .eq("is_featured", true)
-        .maybeSingle(),
-      supabase
-        .from("trades")
-        .select("market_id, amount, created_at, shares")
-        .gte("created_at", since),
-      supabase
-        .from("trades")
-        .select("*, profiles(username), markets(question)")
-        .order("created_at", { ascending: false })
-        .limit(30),
-    ]);
+    const [marketsRes, featuredRes, windowRes, feedRes, countRes] =
+      await Promise.all([
+        supabase.from("markets").select("*").eq("status", "active"),
+        supabase
+          .from("markets")
+          .select("*")
+          .eq("status", "active")
+          .eq("is_featured", true)
+          .maybeSingle(),
+        supabase
+          .from("trades")
+          .select("market_id, amount, created_at")
+          .gte("created_at", since),
+        supabase
+          .from("trades")
+          .select("*, profiles(username), markets(question)")
+          .order("created_at", { ascending: false })
+          .limit(30),
+        supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true }),
+      ]);
 
     if (marketsRes.data) {
       const volumeMap: Record<string, number> = {};
-      const sharesMap: Record<string, number> = {};
       if (windowRes.data) {
         for (const t of windowRes.data) {
           volumeMap[t.market_id] =
             (volumeMap[t.market_id] ?? 0) + Number(t.amount);
-          sharesMap[t.market_id] =
-            (sharesMap[t.market_id] ?? 0) + Number(t.shares);
         }
       }
 
@@ -92,9 +97,9 @@ export default function TVPage() {
         (m) => ({
           ...m,
           recentVolume: volumeMap[m.id] ?? 0,
-          recentShares: sharesMap[m.id] ?? 0,
         })
       );
+      // Rank by trading volume (leaves) in last 10 min
       ranked.sort((a, b) => {
         if (b.recentVolume !== a.recentVolume)
           return b.recentVolume - a.recentVolume;
@@ -112,7 +117,6 @@ export default function TVPage() {
           ? {
               ...featuredRow,
               recentVolume: volumeMap[featuredRow.id] ?? 0,
-              recentShares: sharesMap[featuredRow.id] ?? 0,
             }
           : null;
       setFeaturedMarket(featured);
@@ -144,6 +148,10 @@ export default function TVPage() {
       setTrades(feedRes.data as TradeWithContext[]);
     }
 
+    if (countRes.count != null) {
+      setUserCount(countRes.count);
+    }
+
     setLoading(false);
   }, []);
 
@@ -153,6 +161,25 @@ export default function TVPage() {
     return () => clearInterval(interval);
   }, [fetchAndRank]);
 
+  // When a new trade appears at the top, spawn falling leaves (count = trade volume / 10)
+  useEffect(() => {
+    if (trades.length === 0) return;
+    const firstId = trades[0].id;
+    const prevId = previousFirstTradeIdRef.current;
+    if (prevId !== null && firstId !== prevId) {
+      const amount = Number(trades[0].amount);
+      const count = Math.max(1, Math.floor(amount / 10));
+      const key = firstId;
+      setFallingLeaves((prev) => [...prev, { key, count }]);
+      const t = setTimeout(() => {
+        setFallingLeaves((p) => p.filter((b) => b.key !== key));
+      }, 4000);
+      previousFirstTradeIdRef.current = firstId;
+      return () => clearTimeout(t);
+    }
+    previousFirstTradeIdRef.current = firstId;
+  }, [trades]);
+
   useEffect(() => {
     const supabase = supabaseRef.current;
     const channel = supabase
@@ -160,7 +187,24 @@ export default function TVPage() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "trades" },
-        () => fetchAndRank()
+        (payload) => {
+          // Spawn leaves from INSERT payload (Supabase JS uses .new; some docs use .newRecord).
+          const raw =
+            (payload as { new?: unknown; newRecord?: unknown }).new ??
+            (payload as { newRecord?: unknown }).newRecord;
+          const row = raw as Record<string, unknown> | null;
+          const id = row?.id != null ? String(row.id) : null;
+          const amount = Number(row?.amount ?? 0);
+          if (id) {
+            const count = Math.max(1, Math.floor(amount / 10));
+            setFallingLeaves((prev) => [...prev, { key: id, count }]);
+            previousFirstTradeIdRef.current = id;
+            setTimeout(() => {
+              setFallingLeaves((p) => p.filter((b) => b.key !== id));
+            }, 4000);
+          }
+          fetchAndRank();
+        }
       )
       .on(
         "postgres_changes",
@@ -184,7 +228,7 @@ export default function TVPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden p-3">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0">
         <Link href="/" className="flex items-center gap-3">
           <Image
@@ -198,27 +242,29 @@ export default function TVPage() {
             TimberMarket
           </span>
         </Link>
-        <span className="text-muted text-xs">
-          Top {TOP_N} by 10 min volume
-        </span>
+        {userCount != null && (
+          <span className="text-foreground text-base font-medium tabular-nums">
+            {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel: top = featured, bottom = top 5 by trading volume; no scroll */}
         <div className="w-2/3 flex flex-col border-r border-border/50 min-h-0 overflow-hidden">
-          {/* Top half: featured market (admin-selected) */}
-          <div className="h-1/2 flex flex-col min-h-0 overflow-hidden border-b border-border/50">
+          {/* Top: featured market (admin-selected) */}
+          <div className="flex-[0_0_40%] flex flex-col min-h-0 overflow-hidden">
             {featuredMarket ? (
               <Link
                 href={`/markets/${featuredMarket.id}`}
-                className="flex-1 flex flex-col min-h-0 min-w-0 p-4 bg-card/30 hover:bg-card/50 transition-colors"
+                className="flex-1 flex flex-col min-h-0 min-w-0 px-2 py-4 bg-card/30 hover:bg-card/50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-3 mb-2 shrink-0">
-                  <h2 className="text-base font-bold text-foreground leading-tight line-clamp-2 flex-1 min-w-0">
+                  <h2 className="text-3xl font-bold text-foreground leading-tight line-clamp-2 flex-1 min-w-0">
                     {featuredMarket.question}
                   </h2>
                   <div
-                    className={`text-2xl font-bold tabular-nums shrink-0 ${
+                    className={`text-3xl font-bold tabular-nums shrink-0 ${
                       featuredMarket.probability >= 0.5 ? "text-yes" : "text-no"
                     }`}
                   >
@@ -228,16 +274,16 @@ export default function TVPage() {
                 <div className="flex items-center gap-3 text-xs text-muted mb-3 shrink-0">
                   <span>Created {timeAgo(featuredMarket.created_at)}</span>
                   <span className="text-accent font-medium">
-                    {formatShares(featuredMarket.recentShares)} shares in last 10 min
+                    {formatLeaves(featuredMarket.recentVolume)} vol in last 10 min
                   </span>
                   <span>{formatLeaves(featuredMarket.volume)} total volume</span>
                 </div>
-                <div className="flex-1 min-h-0 w-full rounded-lg overflow-hidden border border-border/50">
+                <div className="w-full max-h-[213px] rounded-lg overflow-hidden border border-border/50 shrink-0 p-2">
                   <FeaturedChart
                     marketId={featuredMarket.id}
                     data={historyByMarket[featuredMarket.id] ?? []}
                     currentProb={featuredMarket.probability}
-                    height="100%"
+                    height={197}
                   />
                 </div>
               </Link>
@@ -249,14 +295,9 @@ export default function TVPage() {
               </div>
             )}
           </div>
-          {/* Bottom half: top 5 by recent trading volume (fits without scroll) */}
-          <div className="h-1/2 flex flex-col min-h-0 overflow-hidden">
-            <div className="px-4 py-1 border-b border-border/50 shrink-0">
-              <h2 className="text-xs font-semibold text-muted uppercase tracking-wide">
-                Top {LIST_COUNT} by recent trading volume
-              </h2>
-            </div>
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-2 gap-1">
+          {/* Bottom: top 5 list (takes remaining space, meets top) */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-2 gap-2">
               {top10.length === 0 ? (
                 <div className="flex items-center justify-center flex-1 min-h-0">
                   <p className="text-muted text-sm">No active markets</p>
@@ -275,13 +316,13 @@ export default function TVPage() {
         </div>
 
         {/* Right panel: Recent trades */}
-        <div className="w-1/3 flex flex-col overflow-hidden">
+        <div className="w-1/3 flex flex-col overflow-hidden relative">
           <div className="px-5 py-4 border-b border-border/50 shrink-0">
-            <h2 className="text-sm font-semibold text-foreground">
+            <h2 className="text-lg font-semibold text-foreground">
               Recent Trades
             </h2>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto relative">
             {trades.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <p className="text-muted text-sm">No trades yet</p>
@@ -293,6 +334,59 @@ export default function TVPage() {
                 ))}
               </div>
             )}
+          </div>
+          {/* Falling leaves overlay when new trades arrive */}
+          <div
+            className="absolute inset-0 pointer-events-none overflow-hidden z-10"
+            aria-hidden
+          >
+            {fallingLeaves.map((burst) => {
+              const count = burst.count;
+              const bandWidth = 90 / Math.max(1, count);
+              return Array.from({ length: count }, (_, i) => {
+                const seed = `${burst.key}-${i}`;
+                const hash = (s: string) => {
+                  let h = 0;
+                  for (let j = 0; j < s.length; j++)
+                    h = ((h << 5) - h + s.charCodeAt(j)) | 0;
+                  return Math.abs(h);
+                };
+                const h1 = hash(seed);
+                const h2 = hash(seed + "x");
+                const h3 = hash(seed + "y");
+                const left =
+                  5 +
+                  i * bandWidth +
+                  (h1 % 100) / 100 * bandWidth;
+                const topOffset = -2 - (h2 % 24) / 4;
+                const wiggleDuration = 0.35 + (h3 % 45) / 100;
+                const wiggleDelay = (h2 % 40) / 100;
+                const fallDuration = 2.2 + (h1 % 180) / 100;
+                const fallDelay = (h2 % 50) / 100;
+                return (
+                  <span
+                    key={`${burst.key}-${i}`}
+                    className="leaf-fall absolute text-2xl opacity-90"
+                    style={{
+                      left: `${left}%`,
+                      top: `${topOffset}rem`,
+                      animationDuration: `${fallDuration}s`,
+                      animationDelay: `${fallDelay}s`,
+                    }}
+                  >
+                    <span
+                      className="leaf-wiggle"
+                      style={{
+                        animationDuration: `${wiggleDuration}s`,
+                        animationDelay: `${wiggleDelay}s`,
+                      }}
+                    >
+                      🍃
+                    </span>
+                  </span>
+                );
+              });
+            })}
           </div>
         </div>
       </div>
@@ -315,41 +409,37 @@ function TVMarketBlock({
       href={`/markets/${market.id}`}
       className="flex-1 min-h-0 flex min-w-0 overflow-hidden"
     >
-      <div className="bg-card border border-border rounded px-2 py-1 hover:border-border/80 hover:bg-card-hover transition-all flex items-center justify-between gap-2 w-full min-h-0 flex-1 overflow-hidden">
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-bold text-border tabular-nums shrink-0 w-3">
+      <div className="bg-card border border-border rounded px-2 py-2.5 hover:border-border/80 hover:bg-card-hover transition-all flex flex-col gap-1 w-full min-h-0 flex-1 overflow-hidden">
+        <div className="flex items-baseline justify-between gap-2 min-w-0">
+          <div className="flex items-baseline gap-1.5 min-w-0 flex-1 overflow-hidden">
+            <span className="text-lg font-bold text-border tabular-nums shrink-0 w-4">
               {rank}
             </span>
-            <h2 className="text-foreground font-medium text-[10px] leading-tight truncate min-w-0">
+            <h2 className="text-foreground font-medium text-lg leading-tight truncate min-w-0">
               {market.question}
             </h2>
           </div>
-          <div className="flex items-center gap-2 mt-0.5 text-[9px] text-muted">
-            <span className="text-accent font-medium truncate">
-              {formatLeaves(market.volume)} vol
-            </span>
-            <span className="truncate">
-              {formatShares(market.recentShares)} shares (10m)
-            </span>
-          </div>
-          <div className="flex h-0.5 rounded-full overflow-hidden bg-border/30 gap-px mt-0.5">
-            <div
-              className="bg-yes/80 rounded-l-full transition-all duration-300"
-              style={{ width: `${yesPercent}%` }}
-            />
-            <div
-              className="bg-no/80 rounded-r-full transition-all duration-300"
-              style={{ width: `${noPercent}%` }}
-            />
+          <div className="text-lg font-bold tabular-nums leading-tight shrink-0 text-foreground">
+            {yesPercent}%
           </div>
         </div>
-        <div
-          className={`text-sm font-bold tabular-nums leading-tight shrink-0 ${
-            market.probability >= 0.5 ? "text-yes" : "text-no"
-          }`}
-        >
-          {yesPercent}%
+        <div className="flex items-center gap-2 text-xs text-muted">
+          <span className="text-yes font-medium truncate">
+            {formatLeaves(market.recentVolume)} vol
+          </span>
+          <span className="truncate">
+            {formatLeaves(market.volume)} vol
+          </span>
+        </div>
+        <div className="flex h-1 w-full rounded-full overflow-hidden bg-border/30 gap-px">
+          <div
+            className="bg-yes/80 rounded-l-full transition-all duration-300"
+            style={{ width: `${yesPercent}%` }}
+          />
+          <div
+            className="bg-no/80 rounded-r-full transition-all duration-300"
+            style={{ width: `${noPercent}%` }}
+          />
         </div>
       </div>
     </Link>
@@ -390,15 +480,16 @@ function FeaturedChart({
             type="number"
             domain={["dataMin", "dataMax"]}
             tickFormatter={(v) =>
-              new Date(v).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
+              new Date(v).toLocaleTimeString(undefined, {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
               })
             }
             stroke="var(--color-muted)"
             fontSize={11}
             tickLine={false}
-            axisLine={false}
+            axisLine={{ stroke: "var(--color-border)" }}
           />
           <YAxis
             domain={[0, 100]}
@@ -406,7 +497,7 @@ function FeaturedChart({
             stroke="var(--color-muted)"
             fontSize={11}
             tickLine={false}
-            axisLine={false}
+            axisLine={{ stroke: "var(--color-border)" }}
             width={40}
           />
           <Area
@@ -431,6 +522,31 @@ function FeaturedChart({
     chartData.push({ time: endTime, probability: last.probability });
   }
 
+  const firstTime = chartData[0]?.time ?? endTime;
+  const timeSpan = endTime - firstTime;
+  const isShortSpan = timeSpan < 24 * 60 * 60 * 1000;
+  const firstDate = new Date(firstTime);
+  const lastDate = new Date(endTime);
+  const isSameDay =
+    firstDate.getFullYear() === lastDate.getFullYear() &&
+    firstDate.getMonth() === lastDate.getMonth() &&
+    firstDate.getDate() === lastDate.getDate();
+
+  const formatXTick = (v: number) => {
+    const date = new Date(v);
+    if (isSameDay || isShortSpan) {
+      return date.toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={chartData}>
@@ -444,16 +560,11 @@ function FeaturedChart({
           dataKey="time"
           type="number"
           domain={["dataMin", endTime]}
-          tickFormatter={(v) =>
-            new Date(v).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })
-          }
+          tickFormatter={formatXTick}
           stroke="var(--color-muted)"
           fontSize={11}
           tickLine={false}
-          axisLine={false}
+          axisLine={{ stroke: "var(--color-border)" }}
         />
         <YAxis
           domain={[0, 100]}
@@ -461,7 +572,7 @@ function FeaturedChart({
           stroke="var(--color-muted)"
           fontSize={11}
           tickLine={false}
-          axisLine={false}
+          axisLine={{ stroke: "var(--color-border)" }}
           width={40}
         />
         <Area
@@ -481,7 +592,7 @@ function TVTradeRow({ trade }: { trade: TradeWithContext }) {
 
   return (
     <div className="px-5 py-3 hover:bg-card-hover/50 transition-colors">
-      <div className="text-xs text-muted truncate mb-1.5">
+      <div className="text-sm text-muted truncate mb-1.5">
         {marketQuestion}
       </div>
       <div className="flex items-center justify-between">
