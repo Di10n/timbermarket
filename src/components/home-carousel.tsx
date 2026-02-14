@@ -26,11 +26,10 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
   const count = marketsWithHistory?.length ?? 0;
 
   useEffect(() => {
-    if (index < 0 || index >= count) return;
-    const el = slideRefs.current[index];
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-    }
+    if (index < 0 || index >= count || !scrollRef.current) return;
+    const container = scrollRef.current;
+    const targetScroll = index * container.offsetWidth;
+    container.scrollTo({ left: targetScroll, behavior: "smooth" });
   }, [index, count]);
 
   useEffect(() => {
