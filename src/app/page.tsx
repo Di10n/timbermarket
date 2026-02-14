@@ -80,7 +80,7 @@ export default async function Home() {
     .map((p) => {
       const userPos = allPositions.filter((pos: any) => pos.user_id === p.id);
       const posValue = userPos.reduce((sum: number, pos: any) => {
-        const prob = pos.markets?.probability ?? 0.5;
+        const prob = pos.markets?.[0]?.probability ?? 0.5;
         return sum + pos.yes_shares * prob + pos.no_shares * (1 - prob);
       }, 0);
       return { username: p.username, portfolio_value: p.balance + posValue };
