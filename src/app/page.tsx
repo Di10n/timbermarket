@@ -6,6 +6,7 @@ import Leaderboard from "@/components/leaderboard";
 import RecentTrades from "@/components/recent-trades";
 import MarketCard from "@/components/market-card";
 import SuggestMarket from "@/components/suggest-market";
+import RecentComments from "@/components/recent-comments";
 import type { Market, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ export default async function Home() {
     }
   }
 
-  const [marketsResult, tradesResult, profileResult, allProfilesResult, allPositionsResult, userPositionsResult] =
+  const [marketsResult, tradesResult, profileResult, allProfilesResult, allPositionsResult, userPositionsResult, recentCommentsResult] =
     await Promise.all([
       supabase
         .from("markets")
@@ -65,6 +66,11 @@ export default async function Home() {
             .eq("user_id", user.id)
             .or("yes_shares.gt.0,no_shares.gt.0")
         : { data: [] },
+      supabase
+        .from("comments")
+        .select("id, content, created_at, market_id, profiles(username), markets(question)")
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
 
   const topMarkets = (marketsResult.data ?? []) as Market[];
@@ -75,6 +81,15 @@ export default async function Home() {
   const profile = profileResult.data as { username: string; balance: number; is_admin?: boolean } | null;
 
   // Build leaderboard with portfolio values (mirrors leaderboard page logic)
+  const recentComments = ((recentCommentsResult.data ?? []) as any[]).map((c) => ({
+    id: c.id as string,
+    content: c.content as string,
+    created_at: c.created_at as string,
+    market_id: c.market_id as string,
+    profiles: c.profiles as { username: string },
+    markets: c.markets as { question: string },
+  }));
+
   const allProfiles = (allProfilesResult.data ?? []) as { id: string; username: string; balance: number }[];
   const allPositions = (allPositionsResult.data ?? []) as any[];
   const leaderList = allProfiles
@@ -157,15 +172,16 @@ export default async function Home() {
 
       <main className="max-w-6xl mx-auto px-3 py-4 lg:px-4 lg:py-8 flex-1 w-full min-h-0">
         {/* Carousel and leaderboard side by side */}
-        <div className="flex gap-4 lg:gap-8 flex-col lg:flex-row mb-6 lg:mb-8">
-          {/* Left: Carousel */}
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-col gap-4 lg:relative lg:block mb-6 lg:mb-8">
+          {/* Left: Carousel – in normal flow, defines the row height */}
+          <div className="min-w-0 lg:mr-88">
             <HomeCarousel marketsWithHistory={carouselWithHistory} />
           </div>
 
-          {/* Right: leaderboard */}
-          <div className="w-full lg:w-80">
+          {/* Right: leaderboard + recent chat – absolute on desktop, matches carousel height */}
+          <div className="flex flex-col gap-4 lg:absolute lg:top-0 lg:right-0 lg:bottom-14 lg:w-80 overflow-hidden">
             <Leaderboard leaders={leaderList} />
+            <RecentComments comments={recentComments} />
           </div>
         </div>
 

@@ -30,6 +30,7 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
           <div className="hidden lg:flex items-center gap-4 text-sm">
             <NavLink href="/portfolio">Portfolio</NavLink>
             <NavLink href="/leaderboard">Leaderboard</NavLink>
+            <Link href="/tv" className="bg-accent/15 text-accent hover:bg-accent/25 font-medium px-2.5 py-0.5 rounded-full transition-colors">Live</Link>
             {profile?.is_admin && <NavLink href="/admin">Admin</NavLink>}
           </div>
         </div>
