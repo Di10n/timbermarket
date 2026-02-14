@@ -181,7 +181,7 @@ export default async function Home() {
           {/* Right: leaderboard + recent chat – absolute on desktop, matches carousel height */}
           <div className="flex flex-col gap-4 lg:absolute lg:top-0 lg:right-0 lg:bottom-14 lg:w-80 overflow-hidden">
             <Leaderboard leaders={leaderList} />
-            <RecentComments comments={recentComments} />
+            <RecentComments comments={recentComments} isLoggedIn={!!user} />
           </div>
         </div>
 

@@ -66,7 +66,7 @@ export default function SuggestMarket({ isLoggedIn }: SuggestMarketProps) {
 
       {!isLoggedIn ? (
         <p className="text-sm text-muted">
-          <a href="/login" className="text-accent hover:underline">Log in</a> to suggest a market idea.
+          <a href="/signup" className="text-accent hover:underline">Sign up</a> to suggest a market idea.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3">

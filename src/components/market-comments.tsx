@@ -87,7 +87,9 @@ export default function MarketComments({
       )}
 
       {comments.length === 0 ? (
-        <p className="text-sm text-muted">No comments yet.</p>
+        <p className="text-sm text-muted">
+          {currentUserId ? "No comments yet." : <><a href="/signup" className="text-accent hover:underline">Sign up</a> to see comments.</>}
+        </p>
       ) : (
         <div className="space-y-3">
           {comments.map((comment) => (
