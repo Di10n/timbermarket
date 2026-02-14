@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import HomeTopBar from "@/components/home-top-bar";
 import HomeCarousel from "@/components/home-carousel";
 import Leaderboard from "@/components/leaderboard";
@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const supabase = await createClient();
+  const serviceClient = await createServiceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -29,7 +30,7 @@ export default async function Home() {
     }
   }
 
-  const [marketsResult, tradesResult, profileResult, leadersResult, positionsResult] =
+  const [marketsResult, tradesResult, profileResult, profilesResult, allPositionsResult, positionsResult] =
     await Promise.all([
       supabase
         .from("markets")
@@ -51,10 +52,12 @@ export default async function Home() {
         : { data: null },
       supabase
         .from("profiles")
-        .select("username, balance")
-        .eq("is_approved", true)
-        .order("balance", { ascending: false })
-        .limit(10),
+        .select("id, username, balance")
+        .eq("is_approved", true),
+      serviceClient
+        .from("positions")
+        .select("user_id, yes_shares, no_shares, markets(probability)")
+        .or("yes_shares.gt.0,no_shares.gt.0"),
       user
         ? supabase
             .from("positions")
@@ -70,7 +73,30 @@ export default async function Home() {
     markets?: { question: string } | null;
   })[];
   const profile = profileResult.data as { username: string; balance: number } | null;
-  const leaderList = (leadersResult.data ?? []) as { username: string; balance: number }[];
+
+  // Calculate portfolio values for leaderboard
+  const profiles = (profilesResult.data ?? []) as { id: string; username: string; balance: number }[];
+  const allPositions = (allPositionsResult.data ?? []) as {
+    user_id: string;
+    yes_shares: number;
+    no_shares: number;
+    markets: { probability: number } | null;
+  }[];
+
+  const leaderList = profiles
+    .map((p) => {
+      const userPositions = allPositions.filter((pos) => pos.user_id === p.id);
+      const positionsValue = userPositions.reduce((sum, pos) => {
+        const prob = pos.markets?.probability ?? 0.5;
+        return sum + pos.yes_shares * prob + pos.no_shares * (1 - prob);
+      }, 0);
+      return {
+        username: p.username,
+        balance: p.balance + positionsValue,
+      };
+    })
+    .sort((a, b) => b.balance - a.balance)
+    .slice(0, 10);
 
   // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
   const userMarketIds = new Set(

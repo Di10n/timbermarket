@@ -22,7 +22,11 @@ export default function Leaderboard({ leaders }: LeaderboardProps) {
       <Link href="/leaderboard" className="text-sm text-muted hover:text-foreground transition-colors mb-3 inline-block">
         Leaderboard
       </Link>
-      <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs text-muted px-2 pb-2 border-b border-border/50">
+        <span>User</span>
+        <span>Total Value</span>
+      </div>
+      <div className="space-y-1.5 mt-1.5">
         {leaders.map((user, i) => (
           <div
             key={user.username}
