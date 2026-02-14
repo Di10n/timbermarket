@@ -22,7 +22,7 @@ function CreateMarketForm() {
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
   const [probability, setProbability] = useState(50);
-  const [ante, setAnte] = useState("100");
+  const [ante, setAnte] = useState("1000");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -56,7 +56,7 @@ function CreateMarketForm() {
       setQuestion("");
       setDescription("");
       setProbability(50);
-      setAnte("100");
+      setAnte("1000");
       router.refresh();
     } catch {
       setMessage("Something went wrong");
