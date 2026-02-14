@@ -60,6 +60,8 @@ export default function TVPage() {
   const [comments, setComments] = useState<CommentWithContext[]>([]);
   const [loading, setLoading] = useState(true);
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState("");
+  const [countdownDone, setCountdownDone] = useState(false);
   const [ambientLeaves, setAmbientLeaves] = useState<
     { id: number; left: number; fallDuration: number; swayDuration: number; swayDelay: number; size: number; rotation: number }[]
   >([]);
@@ -213,6 +215,26 @@ export default function TVPage() {
     };
   }, [fetchAndRank]);
 
+  // Countdown to 9:30 AM PST on Feb 15, 2026
+  useEffect(() => {
+    const target = new Date("2026-02-15T09:30:00-08:00").getTime();
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) {
+        setCountdown("0h 0m 0s");
+        setCountdownDone(true);
+        return;
+      }
+      const hours = Math.floor(diff / 3_600_000);
+      const minutes = Math.floor((diff % 3_600_000) / 60_000);
+      const seconds = Math.floor((diff % 60_000) / 1_000);
+      setCountdown(`${hours}h ${minutes}m ${seconds}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   // Ambient falling leaves
   useEffect(() => {
     const spawnInterval = setInterval(() => {
@@ -258,7 +280,7 @@ export default function TVPage() {
   return (
     <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-10 py-4 shrink-0 tv-header-gradient">
+      <div className="relative flex items-center justify-between px-10 py-4 shrink-0 tv-header-gradient">
         <Link href="/" className="flex items-center gap-5">
           <Image
             src="/timbermarket_logo.svg"
@@ -271,6 +293,14 @@ export default function TVPage() {
             Timbermarket
           </span>
         </Link>
+        <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+          <span className="text-base font-bold uppercase tracking-widest text-muted">
+            {countdownDone ? "Hacking Ended" : "Hacking Ends In"}
+          </span>
+          <span className={`text-7xl font-black tabular-nums font-[family-name:var(--font-gaegu)] ${countdownDone ? "text-no" : "text-accent"}`}>
+            {countdown}
+          </span>
+        </div>
         <div className="flex items-center gap-8">
           {userCount != null && (
             <span className="text-muted text-xl tabular-nums">
