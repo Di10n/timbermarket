@@ -407,7 +407,7 @@ export default function TVPage() {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <div className="px-6 pt-5 pb-3 shrink-0">
               <h3 className="text-lg font-bold uppercase tracking-widest text-muted">
-                All Markets
+                Other Markets
               </h3>
             </div>
             <div className="flex-1 flex flex-col justify-start min-h-0 overflow-hidden px-4 pb-3 gap-3">
@@ -416,7 +416,7 @@ export default function TVPage() {
                   <p className="text-muted text-xl">No active markets</p>
                 </div>
               ) : (
-                top10.slice(0, LIST_COUNT).map((market) => (
+                top10.filter((m) => !featuredMarket || m.id !== featuredMarket.id).slice(0, LIST_COUNT).map((market) => (
                   <TVMarketBlock
                     key={market.id}
                     market={market}
