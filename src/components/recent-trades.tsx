@@ -15,7 +15,7 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
   if (!trades || trades.length === 0) {
     return (
       <div className="border-b border-border py-4">
-        <h3 className="text-sm text-muted mb-3">Recent Trades</h3>
+        <Link href="/trades" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">Recent Trades</Link>
         <p className="text-sm text-muted">No trades yet.</p>
       </div>
     );
@@ -24,9 +24,9 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
   if (compact) {
     return (
       <div className="border-b border-border py-4">
-        <h3 className="text-sm text-muted mb-3">Recent Trades</h3>
+        <Link href="/trades" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">Recent Trades</Link>
         <div className="space-y-2">
-          {trades.map((trade) => {
+          {trades.slice(0, 12).map((trade) => {
             const user = trade.profiles?.username ?? "Someone";
             const question = trade.markets?.question ?? "a market";
             const action = trade.type === "BUY" ? "bought" : "sold";

@@ -18,8 +18,11 @@ export default async function MarketsPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-8">Markets</h1>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Markets</h1>
+        <p className="text-sm text-muted">Bet on your friends!</p>
+      </div>
 
       {(!activeMarkets || activeMarkets.length === 0) && (
         <p className="text-muted text-sm py-4">No active markets yet.</p>

@@ -4,8 +4,7 @@ import HomeTopBar from "@/components/home-top-bar";
 import HomeCarousel from "@/components/home-carousel";
 import Leaderboard from "@/components/leaderboard";
 import RecentTrades from "@/components/recent-trades";
-import ForestFooter from "@/components/forest-footer";
-import MarketCard from "@/components/market-card";
+import PaginatedMarketList from "@/components/paginated-market-list";
 import type { Market, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +29,7 @@ export default async function Home() {
     }
   }
 
-  const [marketsResult, tradesResult, profileResult, profilesResult, allPositionsResult, userPositionsResult] =
+  const [marketsResult, tradesResult, profileResult, allProfilesResult, allPositionsResult, userPositionsResult] =
     await Promise.all([
       supabase
         .from("markets")
@@ -74,29 +73,19 @@ export default async function Home() {
   })[];
   const profile = profileResult.data as { username: string; balance: number } | null;
 
-  // Calculate portfolio values for leaderboard
-  const profiles = (profilesResult.data ?? []) as { id: string; username: string; balance: number }[];
-  const allPositions = (allPositionsResult.data ?? []) as {
-    user_id: string;
-    yes_shares: number;
-    no_shares: number;
-    markets: { probability: number }[];
-  }[];
-
-  const leaderList = profiles
+  // Build leaderboard with portfolio values (mirrors leaderboard page logic)
+  const allProfiles = (allProfilesResult.data ?? []) as { id: string; username: string; balance: number }[];
+  const allPositions = (allPositionsResult.data ?? []) as any[];
+  const leaderList = allProfiles
     .map((p) => {
-      const userPositions = allPositions.filter((pos) => pos.user_id === p.id);
-      const positionsValue = userPositions.reduce((sum, pos) => {
+      const userPos = allPositions.filter((pos: any) => pos.user_id === p.id);
+      const posValue = userPos.reduce((sum: number, pos: any) => {
         const prob = pos.markets?.[0]?.probability ?? 0.5;
         return sum + pos.yes_shares * prob + pos.no_shares * (1 - prob);
       }, 0);
-      return {
-        username: p.username,
-        balance: p.balance + positionsValue,
-      };
+      return { username: p.username, portfolio_value: p.balance + posValue };
     })
-    .sort((a, b) => b.balance - a.balance)
-    .slice(0, 10);
+    .sort((a, b) => b.portfolio_value - a.portfolio_value);
 
   // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
   const userMarketIds = new Set(
@@ -139,34 +128,28 @@ export default async function Home() {
   }));
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen">
       <HomeTopBar user={user} profile={user ? profile : null} />
 
-      <main className="max-w-4xl mx-auto px-4 py-8 flex-1 w-full min-h-0">
+      <main className="max-w-4xl mx-auto px-4 py-8 w-full">
         <div className="flex gap-8 flex-col lg:flex-row">
           {/* Left: carousel + markets ~70% */}
-          <div className="flex-[7] min-w-0 flex flex-col min-h-0">
+          <div className="flex-[7] min-w-0">
             <HomeCarousel marketsWithHistory={carouselWithHistory} />
 
-            <div className="mt-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Markets</h2>
-              <div className="space-y-4">
-                {topMarkets.map((market) => (
-                  <MarketCard key={market.id} market={market} />
-                ))}
-              </div>
+            <div className="mt-2">
+              <PaginatedMarketList markets={topMarkets} />
             </div>
           </div>
 
           {/* Right: leaderboard + recent trades ~30% */}
-          <div className="flex-[3] flex flex-col gap-6 lg:min-w-[200px]">
+          <div className="flex-[3] flex flex-col gap-2 lg:min-w-[200px]">
             <Leaderboard leaders={leaderList} />
             <RecentTrades trades={recentTrades} compact />
           </div>
         </div>
       </main>
 
-      <ForestFooter />
     </div>
   );
 }
