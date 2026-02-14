@@ -55,7 +55,7 @@ export default async function Home() {
         .eq("is_approved", true),
       serviceClient
         .from("positions")
-        .select("user_id, market_id, yes_shares, no_shares, markets(probability)")
+        .select("user_id, market_id, yes_shares, no_shares, markets(probability, status)")
         .or("yes_shares.gt.0,no_shares.gt.0"),
       user
         ? supabase
@@ -78,9 +78,9 @@ export default async function Home() {
   const allPositions = (allPositionsResult.data ?? []) as any[];
   const leaderList = allProfiles
     .map((p) => {
-      const userPos = allPositions.filter((pos: any) => pos.user_id === p.id);
+      const userPos = allPositions.filter((pos: any) => pos.user_id === p.id && pos.markets?.status === 'active');
       const posValue = userPos.reduce((sum: number, pos: any) => {
-        const prob = pos.markets?.[0]?.probability ?? 0.5;
+        const prob = pos.markets?.probability ?? 0.5;
         return sum + pos.yes_shares * prob + pos.no_shares * (1 - prob);
       }, 0);
       return { username: p.username, portfolio_value: p.balance + posValue };
