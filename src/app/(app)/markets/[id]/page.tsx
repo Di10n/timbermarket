@@ -99,7 +99,7 @@ export default async function MarketPage({
       {/* Main content: Chart + Trade panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
-          <ProbabilityChart data={historyResult.data ?? []} />
+          <ProbabilityChart data={historyResult.data ?? []} resolvedAt={typedMarket.resolved_at} />
           <RecentTrades
             trades={(tradesResult.data ?? []) as (Trade & { profiles?: { username: string } })[]}
           />

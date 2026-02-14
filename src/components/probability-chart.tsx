@@ -16,15 +16,22 @@ interface ProbabilityPoint {
 
 interface ProbabilityChartProps {
   data: ProbabilityPoint[];
+  resolvedAt?: string | null;
 }
 
-export default function ProbabilityChart({ data }: ProbabilityChartProps) {
+export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartProps) {
   if (!data || data.length === 0) return null;
 
   const chartData = data.map((point) => ({
     time: new Date(point.created_at).getTime(),
     probability: Math.round(point.probability * 100),
   }));
+
+  const endTime = resolvedAt ? new Date(resolvedAt).getTime() : Date.now();
+  const last = chartData[chartData.length - 1];
+  if (last && last.time < endTime) {
+    chartData.push({ time: endTime, probability: last.probability });
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg p-4">
@@ -40,7 +47,7 @@ export default function ProbabilityChart({ data }: ProbabilityChartProps) {
           <XAxis
             dataKey="time"
             type="number"
-            domain={["dataMin", "dataMax"]}
+            domain={["dataMin", endTime]}
             tickFormatter={(val) =>
               new Date(val).toLocaleDateString(undefined, {
                 month: "short",
