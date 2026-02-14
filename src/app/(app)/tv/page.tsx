@@ -244,7 +244,7 @@ export default function TVPage() {
         </Link>
         {userCount != null && (
           <span className="text-foreground text-2xl font-bold font-[family-name:var(--font-gaegu)] tabular-nums">
-            {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""} 👋
+            {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""}
           </span>
         )}
       </div>
