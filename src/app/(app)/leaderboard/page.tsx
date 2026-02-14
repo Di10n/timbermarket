@@ -99,80 +99,75 @@ export default async function LeaderboardPage() {
   leaderboard.sort((a, b) => b.portfolio_value - a.portfolio_value);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Leaderboard</h1>
-        <p className="text-muted-foreground mb-6">
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Leaderboard</h1>
+        <p className="text-sm text-muted">
           Top users ranked by total portfolio value (balance + positions)
         </p>
+      </div>
 
-        {leaderboard.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            No users on the leaderboard yet
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {leaderboard.map((entry, index) => {
-              const rank = index + 1;
-              const isCurrentUser = entry.id === user?.id;
+      {leaderboard.length === 0 ? (
+        <p className="text-muted py-8 text-center">
+          No users on the leaderboard yet
+        </p>
+      ) : (
+        <div className="border-t border-border">
+          {leaderboard.map((entry, index) => {
+            const rank = index + 1;
+            const isCurrentUser = entry.id === user?.id;
 
-              return (
-                <LeaderboardEntry
-                  key={entry.id}
-                  rank={rank}
-                  username={entry.username}
-                  balance={entry.balance}
-                  portfolioValue={entry.portfolio_value}
-                  positions={entry.positions}
-                  isCurrentUser={isCurrentUser}
-                />
-              );
-            })}
-          </div>
-        )}
+            return (
+              <LeaderboardEntry
+                key={entry.id}
+                rank={rank}
+                username={entry.username}
+                balance={entry.balance}
+                portfolioValue={entry.portfolio_value}
+                positions={entry.positions}
+                isCurrentUser={isCurrentUser}
+              />
+            );
+          })}
+        </div>
+      )}
 
-        {/* Footer stats */}
-        {leaderboard.length > 0 && (
-          <div className="mt-8 p-4 bg-muted rounded-lg">
-            <div className="flex justify-around text-center">
-              <div>
-                <div className="text-2xl font-bold">{leaderboard.length}</div>
-                <div className="text-sm text-muted-foreground">Total Users</div>
+      {/* Footer stats */}
+      {leaderboard.length > 0 && (
+        <div className="border-t border-border mt-8">
+          <div className="grid grid-cols-3 divide-x divide-border">
+            <div className="py-4 px-2 text-center">
+              <div className="text-2xl font-bold text-foreground">{leaderboard.length}</div>
+              <div className="text-xs text-muted">Total Users</div>
+            </div>
+            <div className="py-4 px-2 text-center">
+              <div className="text-2xl font-bold text-foreground">
+                {formatLeaves(
+                  leaderboard.reduce((sum, entry) => sum + entry.balance, 0)
+                )}
               </div>
-              <div>
-                <div className="text-2xl font-bold">
-                  {formatLeaves(
-                    leaderboard.reduce((sum, entry) => sum + entry.balance, 0)
-                  )}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Total Balance
-                </div>
+              <div className="text-xs text-muted">Total Balance</div>
+            </div>
+            <div className="py-4 px-2 text-center">
+              <div className="text-2xl font-bold text-foreground">
+                {formatLeaves(
+                  leaderboard.reduce(
+                    (sum, entry) => sum + entry.portfolio_value,
+                    0
+                  ) / leaderboard.length
+                )}
               </div>
-              <div>
-                <div className="text-2xl font-bold">
-                  {formatLeaves(
-                    leaderboard.reduce(
-                      (sum, entry) => sum + entry.portfolio_value,
-                      0
-                    ) / leaderboard.length
-                  )}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Avg Portfolio
-                </div>
-              </div>
+              <div className="text-xs text-muted">Avg Portfolio</div>
             </div>
           </div>
-        )}
-
-        {/* Back to markets link */}
-        <div className="mt-6 text-center">
-          <Link href="/markets" className="text-primary hover:underline">
-            ← Back to Markets
-          </Link>
         </div>
-      </div>
+      )}
+
+      <p className="text-xs text-muted mt-8 text-center">
+        <Link href="/" className="hover:text-foreground transition-colors">
+          Back to home
+        </Link>
+      </p>
     </div>
   );
 }

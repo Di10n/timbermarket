@@ -28,12 +28,12 @@ export default function PortfolioTabs({
   return (
     <div>
       {/* Tab toggle */}
-      <div className="flex gap-1 mb-4 bg-card rounded-lg p-1 w-fit">
+      <div className="flex gap-4 mb-4 border-b border-border">
         <button
           onClick={() => setTab("positions")}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+          className={`pb-2 text-sm font-medium transition-colors ${
             tab === "positions"
-              ? "bg-background text-foreground"
+              ? "text-foreground border-b-2 border-accent"
               : "text-muted hover:text-foreground"
           }`}
         >
@@ -41,9 +41,9 @@ export default function PortfolioTabs({
         </button>
         <button
           onClick={() => setTab("trades")}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+          className={`pb-2 text-sm font-medium transition-colors ${
             tab === "trades"
-              ? "bg-background text-foreground"
+              ? "text-foreground border-b-2 border-accent"
               : "text-muted hover:text-foreground"
           }`}
         >
@@ -53,9 +53,9 @@ export default function PortfolioTabs({
 
       {/* Positions tab */}
       {tab === "positions" && (
-        <div className="space-y-2">
+        <div>
           {activePositions.length === 0 && (
-            <p className="text-muted text-sm">
+            <p className="text-muted text-sm py-4">
               No positions yet. Start trading on a market!
             </p>
           )}
@@ -68,11 +68,11 @@ export default function PortfolioTabs({
             const pnl = currentValue - pos.total_invested;
 
             return (
-              <Link key={pos.id} href={`/markets/${pos.market_id}`}>
-                <div className="bg-card border border-border rounded-lg p-4 hover:bg-card-hover transition-colors">
+              <Link key={pos.id} href={`/markets/${pos.market_id}`} className="block">
+                <div className="border-b border-border py-4 px-2 hover:bg-card-hover/30 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 mr-4">
-                      <p className="text-sm font-medium mb-1">
+                      <p className="text-sm font-medium text-foreground mb-1">
                         {pos.markets.question}
                       </p>
                       <div className="flex items-center gap-3 text-xs text-muted">
@@ -90,7 +90,7 @@ export default function PortfolioTabs({
                           Invested: {formatLeaves(pos.total_invested)}
                         </span>
                         {pos.markets.status === "resolved" && (
-                          <span className="px-1.5 py-0.5 bg-border/50 rounded">
+                          <span className="px-1.5 py-0.5 bg-border/50 text-foreground">
                             Resolved {pos.markets.resolution}
                           </span>
                         )}
@@ -98,7 +98,7 @@ export default function PortfolioTabs({
                     </div>
                     {pos.markets.status === "active" && (
                       <div className="text-right">
-                        <p className="text-sm font-medium">
+                        <p className="text-sm font-medium text-foreground">
                           {formatLeaves(currentValue)}
                         </p>
                         <p
@@ -121,16 +121,16 @@ export default function PortfolioTabs({
 
       {/* Trades tab */}
       {tab === "trades" && (
-        <div className="space-y-1">
+        <div>
           {trades.length === 0 && (
-            <p className="text-muted text-sm">No trades yet.</p>
+            <p className="text-muted text-sm py-4">No trades yet.</p>
           )}
           {trades.map((trade) => (
-            <Link key={trade.id} href={`/markets/${trade.market_id}`}>
-              <div className="flex items-center justify-between py-3 px-4 bg-card border border-border rounded-lg hover:bg-card-hover transition-colors text-sm">
+            <Link key={trade.id} href={`/markets/${trade.market_id}`} className="block">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-border hover:bg-card-hover/30 transition-colors text-sm">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-xs px-1.5 py-0.5 rounded ${
+                    className={`text-xs px-1.5 py-0.5 ${
                       trade.type === "BUY"
                         ? "bg-yes/10 text-yes"
                         : "bg-no/10 text-no"

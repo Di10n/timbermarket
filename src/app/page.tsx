@@ -5,6 +5,7 @@ import HomeCarousel from "@/components/home-carousel";
 import Leaderboard from "@/components/leaderboard";
 import RecentTrades from "@/components/recent-trades";
 import ForestFooter from "@/components/forest-footer";
+import MarketCard from "@/components/market-card";
 import type { Market, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -28,27 +29,35 @@ export default async function Home() {
     }
   }
 
-  const [marketsResult, tradesResult, profileResult, leadersResult] = await Promise.all([
-    supabase
-      .from("markets")
-      .select("*")
-      .eq("status", "active")
-      .order("volume", { ascending: false })
-      .limit(12),
-    supabase
-      .from("trades")
-      .select("*, profiles(username), markets(question)")
-      .order("created_at", { ascending: false })
-      .limit(15),
-    user
-      ? supabase
-          .from("profiles")
-          .select("username, balance")
-          .eq("id", user.id)
-          .single()
-      : { data: null },
-    supabase.rpc("get_leaderboard", { p_limit: 10 }),
-  ]);
+  const [marketsResult, tradesResult, profileResult, leadersResult, positionsResult] =
+    await Promise.all([
+      supabase
+        .from("markets")
+        .select("*")
+        .eq("status", "active")
+        .order("volume", { ascending: false })
+        .limit(12),
+      supabase
+        .from("trades")
+        .select("*, profiles(username), markets(question)")
+        .order("created_at", { ascending: false })
+        .limit(15),
+      user
+        ? supabase
+            .from("profiles")
+            .select("username, balance")
+            .eq("id", user.id)
+            .single()
+        : { data: null },
+      supabase.rpc("get_leaderboard", { p_limit: 10 }),
+      user
+        ? supabase
+            .from("positions")
+            .select("market_id")
+            .eq("user_id", user.id)
+            .or("yes_shares.gt.0,no_shares.gt.0")
+        : { data: [] },
+    ]);
 
   const topMarkets = (marketsResult.data ?? []) as Market[];
   const recentTrades = (tradesResult.data ?? []) as (Trade & {
@@ -60,6 +69,20 @@ export default async function Home() {
     leadersResult.error || !leadersResult.data
       ? []
       : (leadersResult.data as { username: string; balance: number }[]);
+
+  // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
+  const userMarketIds = new Set(
+    ((positionsResult.data ?? []) as { market_id: string }[]).map((p) => p.market_id)
+  );
+  const userTradedMarkets = topMarkets
+    .filter((m) => userMarketIds.has(m.id))
+    .slice(0, 3);
+  const userTradedIds = new Set(userTradedMarkets.map((m) => m.id));
+  const remainingSlots = 5 - userTradedMarkets.length;
+  const volumeMarkets = topMarkets
+    .filter((m) => !userTradedIds.has(m.id))
+    .slice(0, remainingSlots);
+  const carouselMarkets = [...userTradedMarkets, ...volumeMarkets];
 
   const marketIds = topMarkets.map((m) => m.id);
   const historyResult =
@@ -82,7 +105,7 @@ export default async function Home() {
     list.push({ probability: row.probability, created_at: row.created_at });
     historyByMarketId.set(row.market_id, list);
   }
-  const marketsWithHistory = topMarkets.map((market) => ({
+  const carouselWithHistory = carouselMarkets.map((market) => ({
     market,
     history: historyByMarketId.get(market.id) ?? [],
   }));
@@ -93,9 +116,18 @@ export default async function Home() {
 
       <main className="max-w-4xl mx-auto px-4 py-8 flex-1 w-full min-h-0">
         <div className="flex gap-8 flex-col lg:flex-row">
-          {/* Left: carousel ~70% (height from content, not full viewport) */}
+          {/* Left: carousel + markets ~70% */}
           <div className="flex-[7] min-w-0 flex flex-col min-h-0">
-            <HomeCarousel marketsWithHistory={marketsWithHistory} />
+            <HomeCarousel marketsWithHistory={carouselWithHistory} />
+
+            <div className="mt-6">
+              <h2 className="text-lg font-semibold text-foreground mb-2">Markets</h2>
+              <div>
+                {topMarkets.map((market) => (
+                  <MarketCard key={market.id} market={market} />
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Right: leaderboard + recent trades ~30% */}

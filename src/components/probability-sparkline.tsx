@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export interface ProbabilityPoint {
   probability: number;
@@ -45,6 +45,27 @@ export default function ProbabilitySparkline({ data, compact = false }: Probabil
               <stop offset="95%" stopColor="var(--color-yes)" stopOpacity={0} />
             </linearGradient>
           </defs>
+          <XAxis dataKey="time" type="number" domain={["dataMin", "dataMax"]} hide />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "var(--color-card)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "6px",
+              fontSize: "11px",
+              padding: "4px 8px",
+              color: "var(--color-foreground)",
+            }}
+            labelFormatter={(val) =>
+              new Date(val).toLocaleString(undefined, {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })
+            }
+            formatter={(value) => [`${value}%`, "Probability"]}
+            isAnimationActive={false}
+          />
           <Area
             type="monotone"
             dataKey="probability"

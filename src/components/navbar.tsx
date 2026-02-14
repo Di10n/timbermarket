@@ -22,8 +22,8 @@ export default async function Navbar() {
     .single();
 
   return (
-    <nav className="border-b border-border bg-background sticky top-0 z-50">
-      <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+    <nav className="bg-background sticky top-0 z-50">
+      <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-3">
             <Image
@@ -36,18 +36,6 @@ export default async function Navbar() {
             <span className="text-accent font-bold text-lg">TimberMarket</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <Link
-              href="/markets"
-              className="text-muted hover:text-foreground transition-colors"
-            >
-              Markets
-            </Link>
-            <Link
-              href="/leaderboard"
-              className="text-muted hover:text-foreground transition-colors"
-            >
-              Leaderboard
-            </Link>
             <NavLink href="/markets">Markets</NavLink>
             <NavLink href="/portfolio">Portfolio</NavLink>
             <NavLink href="/leaderboard">Leaderboard</NavLink>

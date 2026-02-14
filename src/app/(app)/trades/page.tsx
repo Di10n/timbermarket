@@ -46,9 +46,9 @@ export default async function TradesPage() {
   if (error) {
     console.error('Error fetching trades:', error);
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Recent Trades</h1>
-        <p className="text-red-500">Failed to load trades</p>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground mb-6">Recent Trades</h1>
+        <p className="text-no">Failed to load trades</p>
       </div>
     );
   }
@@ -73,117 +73,114 @@ export default async function TradesPage() {
     })) || [];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Recent Trades</h1>
-        <p className="text-muted-foreground mb-6">
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Recent Trades</h1>
+        <p className="text-sm text-muted">
           Latest trading activity across all markets
         </p>
+      </div>
 
-        {typedTrades.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            No trades yet
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {typedTrades.map((trade) => {
-              const probChange = trade.prob_after - trade.prob_before;
-              const isProbUp = probChange > 0;
+      {typedTrades.length === 0 ? (
+        <p className="text-muted py-8 text-center">
+          No trades yet
+        </p>
+      ) : (
+        <div className="border-t border-border">
+          {typedTrades.map((trade) => {
+            const probChange = trade.prob_after - trade.prob_before;
+            const isProbUp = probChange > 0;
 
-              return (
-                <div
-                  key={trade.id}
-                  className="flex items-center gap-4 p-4 rounded-lg border bg-card border-border hover:bg-muted/50 transition-colors"
-                >
-                  {/* Trade Type Badge */}
-                  <div className="flex-shrink-0">
-                    <div
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        trade.type === 'BUY'
-                          ? 'bg-green-500/20 text-green-600'
-                          : 'bg-red-500/20 text-red-600'
-                      }`}
-                    >
-                      {trade.type}
-                    </div>
+            return (
+              <div
+                key={trade.id}
+                className="flex items-center gap-4 py-3 px-2 border-b border-border hover:bg-card-hover/30 transition-colors"
+              >
+                {/* Trade Type Badge */}
+                <div className="shrink-0">
+                  <span
+                    className={`text-xs px-1.5 py-0.5 ${
+                      trade.type === 'BUY'
+                        ? 'bg-yes/10 text-yes'
+                        : 'bg-no/10 text-no'
+                    }`}
+                  >
+                    {trade.type}
+                  </span>
+                </div>
+
+                {/* Outcome Badge */}
+                <div className="shrink-0">
+                  <span
+                    className={
+                      trade.outcome === 'YES' ? 'text-yes text-sm' : 'text-no text-sm'
+                    }
+                  >
+                    {trade.outcome}
+                  </span>
+                </div>
+
+                {/* User */}
+                <div className="shrink-0 min-w-0">
+                  <span className="text-sm font-medium text-foreground truncate">
+                    {trade.user.username}
+                  </span>
+                </div>
+
+                {/* Market */}
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={`/markets/${trade.market.id}`}
+                    className="text-sm text-muted hover:text-foreground transition-colors truncate block"
+                  >
+                    {trade.market.question}
+                  </Link>
+                </div>
+
+                {/* Amount & Shares */}
+                <div className="shrink-0 text-right">
+                  <div className="text-sm font-medium text-foreground">
+                    {formatLeaves(trade.amount)}
                   </div>
-
-                  {/* Outcome Badge */}
-                  <div className="flex-shrink-0">
-                    <div
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        trade.outcome === 'YES'
-                          ? 'bg-blue-500/20 text-blue-600'
-                          : 'bg-orange-500/20 text-orange-600'
-                      }`}
-                    >
-                      {trade.outcome}
-                    </div>
-                  </div>
-
-                  {/* User */}
-                  <div className="flex-shrink-0 min-w-0">
-                    <span className="text-sm font-medium truncate">
-                      {trade.user.username}
-                    </span>
-                  </div>
-
-                  {/* Market */}
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      href={`/markets/${trade.market.id}`}
-                      className="text-sm hover:text-primary transition-colors truncate block"
-                    >
-                      {trade.market.question}
-                    </Link>
-                  </div>
-
-                  {/* Amount & Shares */}
-                  <div className="flex-shrink-0 text-right">
-                    <div className="text-sm font-semibold">
-                      {formatLeaves(trade.amount)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {trade.shares.toFixed(2)} shares
-                    </div>
-                  </div>
-
-                  {/* Probability Change */}
-                  <div className="flex-shrink-0 text-right min-w-[80px]">
-                    <div className="text-sm font-mono">
-                      {(trade.prob_before * 100).toFixed(1)}%{' '}
-                      <span className="text-muted-foreground">→</span>{' '}
-                      {(trade.prob_after * 100).toFixed(1)}%
-                    </div>
-                    <div
-                      className={`text-xs font-semibold ${
-                        isProbUp ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {isProbUp ? '↑' : '↓'}{' '}
-                      {Math.abs(probChange * 100).toFixed(1)}%
-                    </div>
-                  </div>
-
-                  {/* Time */}
-                  <div className="flex-shrink-0 text-right min-w-[60px]">
-                    <span className="text-xs text-muted-foreground">
-                      {timeAgo(trade.created_at)}
-                    </span>
+                  <div className="text-xs text-muted">
+                    {trade.shares.toFixed(2)} shares
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
 
-        {/* Back to markets link */}
-        <div className="mt-6 text-center">
-          <Link href="/markets" className="text-primary hover:underline">
-            ← Back to Markets
-          </Link>
+                {/* Probability Change */}
+                <div className="shrink-0 text-right min-w-[80px]">
+                  <div className="text-sm font-mono text-foreground">
+                    {(trade.prob_before * 100).toFixed(1)}%{' '}
+                    <span className="text-muted">→</span>{' '}
+                    {(trade.prob_after * 100).toFixed(1)}%
+                  </div>
+                  <div
+                    className={`text-xs font-medium ${
+                      isProbUp ? 'text-yes' : 'text-no'
+                    }`}
+                  >
+                    {isProbUp ? '↑' : '↓'}{' '}
+                    {Math.abs(probChange * 100).toFixed(1)}%
+                  </div>
+                </div>
+
+                {/* Time */}
+                <div className="shrink-0 text-right min-w-[60px]">
+                  <span className="text-xs text-muted">
+                    {timeAgo(trade.created_at)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
+
+      <p className="text-xs text-muted mt-8 text-center">
+        <Link href="/" className="hover:text-foreground transition-colors">
+          Back to home
+        </Link>
+      </p>
     </div>
   );
 }
