@@ -80,14 +80,14 @@ export default async function Home() {
     user_id: string;
     yes_shares: number;
     no_shares: number;
-    markets: { probability: number } | null;
+    markets: { probability: number }[];
   }[];
 
   const leaderList = profiles
     .map((p) => {
       const userPositions = allPositions.filter((pos) => pos.user_id === p.id);
       const positionsValue = userPositions.reduce((sum, pos) => {
-        const prob = pos.markets?.probability ?? 0.5;
+        const prob = pos.markets?.[0]?.probability ?? 0.5;
         return sum + pos.yes_shares * prob + pos.no_shares * (1 - prob);
       }, 0);
       return {
