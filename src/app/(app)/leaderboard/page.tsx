@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { formatLeaves } from '@/lib/utils';
 import Link from 'next/link';
 import { LeaderboardEntry } from './leaderboard-entry';
@@ -23,6 +23,7 @@ interface LeaderboardData {
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();
+  const serviceClient = await createServiceClient();
 
   // Get current user
   const {
@@ -45,8 +46,8 @@ export default async function LeaderboardPage() {
     );
   }
 
-  // Fetch all positions with market data
-  const { data: positions, error: positionsError } = await supabase
+  // Fetch all positions with market data using service client to bypass RLS
+  const { data: positions, error: positionsError } = await serviceClient
     .from('positions')
     .select(
       `
@@ -60,7 +61,6 @@ export default async function LeaderboardPage() {
       )
     `
     )
-    .gt('yes_shares', 0)
     .or('yes_shares.gt.0,no_shares.gt.0');
 
   if (positionsError) {

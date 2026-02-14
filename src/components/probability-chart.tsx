@@ -33,6 +33,18 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
     rawData.push({ time: endTime, probability: last.probability });
   }
 
+  // Check if all data is from the same day
+  const firstDate = new Date(rawData[0]?.time || Date.now());
+  const lastDate = new Date(endTime);
+  const isSameDay =
+    firstDate.getFullYear() === lastDate.getFullYear() &&
+    firstDate.getMonth() === lastDate.getMonth() &&
+    firstDate.getDate() === lastDate.getDate();
+
+  // Check if span is less than 24 hours
+  const timeSpan = endTime - (rawData[0]?.time || Date.now());
+  const isShortSpan = timeSpan < 24 * 60 * 60 * 1000;
+
   // Interpolate points between data points so the cursor moves continuously
   // instead of snapping to peaks. Since the chart is stepAfter, probability
   // stays constant between changes.
@@ -73,12 +85,23 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
             dataKey="time"
             type="number"
             domain={["dataMin", endTime]}
-            tickFormatter={(val) =>
-              new Date(val).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })
-            }
+            tickFormatter={(val) => {
+              const date = new Date(val);
+              if (isSameDay || isShortSpan) {
+                // Show time for same-day data
+                return date.toLocaleTimeString(undefined, {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                });
+              } else {
+                // Show date for multi-day data
+                return date.toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                });
+              }
+            }}
             stroke="var(--color-muted)"
             fontSize={11}
             tickLine={false}
