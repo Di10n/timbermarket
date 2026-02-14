@@ -36,7 +36,7 @@ export default async function Home() {
       supabase
         .from("markets")
         .select("*")
-        .eq("status", "active")
+        .in("status", ["active", "resolved"])
         .order("volume", { ascending: false })
         .limit(12),
       supabase
@@ -73,7 +73,11 @@ export default async function Home() {
         .limit(10),
     ]);
 
-  const topMarkets = (marketsResult.data ?? []) as Market[];
+  const topMarkets = (marketsResult.data ?? []).sort((a: Market, b: Market) => {
+    if (a.status === "resolved" && b.status !== "resolved") return 1;
+    if (a.status !== "resolved" && b.status === "resolved") return -1;
+    return 0; // preserve volume order within each group
+  }) as Market[];
   const recentTrades = (tradesResult.data ?? []) as (Trade & {
     profiles?: { username: string };
     markets?: { question: string } | null;
