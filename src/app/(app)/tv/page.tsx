@@ -490,15 +490,19 @@ function TVTradeRow({ trade }: { trade: TradeWithContext }) {
             {trade.profiles?.username ?? "User"}
           </span>
           <span className="text-muted">
-            {trade.type === "BUY" ? "bought" : "sold"}
+            {trade.type === "BUY" ? "bought" : trade.type === "REDEEM" ? "redeemed" : "sold"}
           </span>
-          <span
-            className={`font-semibold ${
-              trade.outcome === "YES" ? "text-yes" : "text-no"
-            }`}
-          >
-            {trade.outcome}
-          </span>
+          {trade.type === "REDEEM" ? (
+            <span className="font-semibold text-accent">pairs</span>
+          ) : (
+            <span
+              className={`font-semibold ${
+                trade.outcome === "YES" ? "text-yes" : "text-no"
+              }`}
+            >
+              {trade.outcome}
+            </span>
+          )}
         </div>
         <span className="text-xs text-muted shrink-0">
           {timeAgo(trade.created_at)}

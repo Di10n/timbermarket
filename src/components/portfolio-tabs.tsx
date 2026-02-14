@@ -134,18 +134,24 @@ export default function PortfolioTabs({
                     className={`text-xs px-1.5 py-0.5 ${
                       trade.type === "BUY"
                         ? "bg-yes/10 text-yes"
+                        : trade.type === "REDEEM"
+                        ? "bg-accent/10 text-accent"
                         : "bg-no/10 text-no"
                     }`}
                   >
                     {trade.type}
                   </span>
-                  <span
-                    className={
-                      trade.outcome === "YES" ? "text-yes" : "text-no"
-                    }
-                  >
-                    {trade.outcome}
-                  </span>
+                  {trade.type === "REDEEM" ? (
+                    <span className="text-accent">pairs</span>
+                  ) : (
+                    <span
+                      className={
+                        trade.outcome === "YES" ? "text-yes" : "text-no"
+                      }
+                    >
+                      {trade.outcome}
+                    </span>
+                  )}
                   <span className="text-muted truncate max-w-xs">
                     {trade.markets.question}
                   </span>
