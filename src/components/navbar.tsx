@@ -33,7 +33,7 @@ export default async function Navbar() {
               height={36}
               className="shrink-0"
             />
-            <span className="text-accent font-bold text-lg">TimberMarket</span>
+            <span className="text-accent font-bold text-lg font-[family-name:var(--font-gaegu)]">TimberMarket</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <NavLink href="/markets">Markets</NavLink>
