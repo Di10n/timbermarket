@@ -67,11 +67,29 @@ export async function POST(request: Request) {
       );
     }
 
+    // Fetch the user's actual position to clamp shares (avoids floating-point mismatch)
+    const { data: position } = await serviceClient
+      .from("positions")
+      .select("yes_shares, no_shares")
+      .eq("user_id", user.id)
+      .eq("market_id", marketId)
+      .single();
+
+    let clampedShares = shares;
+    if (position) {
+      const available =
+        outcome === "YES" ? position.yes_shares : position.no_shares;
+      // If the requested amount is close to or exceeds available, use the exact DB value
+      if (shares >= available || Math.abs(shares - available) < 0.01) {
+        clampedShares = available;
+      }
+    }
+
     const { data, error } = await serviceClient.rpc("execute_sell", {
       p_user_id: user.id,
       p_market_id: marketId,
       p_outcome: outcome,
-      p_shares: shares,
+      p_shares: clampedShares,
     });
 
     if (error) {

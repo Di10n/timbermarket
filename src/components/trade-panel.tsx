@@ -95,7 +95,14 @@ export default function TradePanel({
       if (mode === "BUY") {
         body.amount = numAmount;
       } else {
-        body.shares = numAmount;
+        // Clamp to available shares to avoid floating-point mismatch with DB
+        const available =
+          outcome === "YES"
+            ? position?.yes_shares ?? 0
+            : position?.no_shares ?? 0;
+        const sharesToSell =
+          Math.abs(numAmount - available) < 0.01 ? available : Math.min(numAmount, available);
+        body.shares = sharesToSell;
       }
 
       const res = await fetch("/api/trade", {
@@ -192,7 +199,7 @@ export default function TradePanel({
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0"
           min="0"
-          step="1"
+          step="any"
           disabled={!isActive}
           className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-lg focus:outline-none focus:border-accent disabled:opacity-50"
         />
