@@ -22,7 +22,7 @@ import {
 const RANKING_WINDOW = 10 * 60 * 1000; // 10 minutes
 const POLL_INTERVAL = 3_000; // poll every 3 seconds
 const TOP_N = 10;
-const LIST_COUNT = 7;
+const LIST_COUNT = 6;
 
 interface TradeWithContext extends Trade {
   profiles?: { username: string };
