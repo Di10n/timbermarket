@@ -1,22 +1,56 @@
+import Link from "next/link";
 import { formatLeaves, formatShares, formatProbability, timeAgo } from "@/lib/utils";
 import type { Trade } from "@/lib/types";
 
 interface RecentTradesProps {
-  trades: (Trade & { profiles?: { username: string } })[];
+  trades: (Trade & {
+    profiles?: { username: string };
+    markets?: { question: string } | null;
+  })[];
+  /** When true, show compact "bought YES on [question]..." (for homepage) */
+  compact?: boolean;
 }
 
-export default function RecentTrades({ trades }: RecentTradesProps) {
+export default function RecentTrades({ trades, compact = false }: RecentTradesProps) {
   if (!trades || trades.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-lg p-4">
+      <div className="border-b border-border py-4">
         <h3 className="text-sm text-muted mb-3">Recent Trades</h3>
         <p className="text-sm text-muted">No trades yet.</p>
       </div>
     );
   }
 
+  if (compact) {
+    return (
+      <div className="border-b border-border py-4">
+        <h3 className="text-sm text-muted mb-3">Recent Trades</h3>
+        <div className="space-y-2">
+          {trades.map((trade) => {
+            const user = trade.profiles?.username ?? "Someone";
+            const question = trade.markets?.question ?? "a market";
+            const text =
+              trade.type === "BUY"
+                ? `${user} bought ${trade.outcome} on ${question}`
+                : `${user} sold ${trade.outcome} on ${question}`;
+            return (
+              <Link
+                key={trade.id}
+                href={`/markets/${trade.market_id}`}
+                className="block text-sm py-1.5 border-b border-border/50 last:border-0 text-foreground hover:text-accent transition-colors min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+                title={text}
+              >
+                {text}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
+    <div className="border-b border-border py-4">
       <h3 className="text-sm text-muted mb-3">Recent Trades</h3>
       <div className="space-y-2">
         {trades.map((trade) => (

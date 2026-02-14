@@ -3,6 +3,8 @@ import { formatLeaves } from '@/lib/utils';
 import Link from 'next/link';
 import { LeaderboardEntry } from './leaderboard-entry';
 
+export const dynamic = 'force-dynamic';
+
 interface UserPosition {
   market_id: string;
   market_question: string;
