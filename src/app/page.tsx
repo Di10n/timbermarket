@@ -30,7 +30,7 @@ export default async function Home() {
     }
   }
 
-  const [marketsResult, tradesResult, profileResult, profilesResult, allPositionsResult, positionsResult] =
+  const [marketsResult, tradesResult, profileResult, profilesResult, allPositionsResult, userPositionsResult] =
     await Promise.all([
       supabase
         .from("markets")
@@ -100,7 +100,7 @@ export default async function Home() {
 
   // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
   const userMarketIds = new Set(
-    ((positionsResult.data ?? []) as { market_id: string }[]).map((p) => p.market_id)
+    ((userPositionsResult.data ?? []) as { market_id: string }[]).map((p) => p.market_id)
   );
   const userTradedMarkets = topMarkets
     .filter((m) => userMarketIds.has(m.id))
