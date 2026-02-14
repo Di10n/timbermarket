@@ -6,7 +6,6 @@ import type { Market, Trade } from "@/lib/types";
 import {
   formatProbability,
   formatLeaves,
-  formatShares,
   timeAgo,
 } from "@/lib/utils";
 import Link from "next/link";
@@ -32,6 +31,15 @@ interface TradeWithContext extends Trade {
 
 interface RankedMarket extends Market {
   recentVolume: number;
+  traderCount: number;
+}
+
+interface CommentWithContext {
+  id: string;
+  content: string;
+  created_at: string;
+  profiles?: { username: string } | { username: string }[];
+  markets?: { question: string } | { question: string }[];
 }
 
 interface ProbPoint {
@@ -49,23 +57,20 @@ export default function TVPage() {
     Record<string, ProbPoint[]>
   >({});
   const [trades, setTrades] = useState<TradeWithContext[]>([]);
+  const [comments, setComments] = useState<CommentWithContext[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fallingLeaves, setFallingLeaves] = useState<
-    { key: string; count: number }[]
-  >([]);
   const [userCount, setUserCount] = useState<number | null>(null);
   const [ambientLeaves, setAmbientLeaves] = useState<
     { id: number; left: number; fallDuration: number; swayDuration: number; swayDelay: number; size: number; rotation: number }[]
   >([]);
   const ambientIdRef = useRef(0);
   const supabaseRef = useRef(createClient());
-  const previousFirstTradeIdRef = useRef<string | null>(null);
 
   const fetchAndRank = useCallback(async () => {
     const supabase = supabaseRef.current;
     const since = new Date(Date.now() - RANKING_WINDOW).toISOString();
 
-    const [marketsRes, featuredRes, windowRes, feedRes, countRes] =
+    const [marketsRes, featuredRes, windowRes, feedRes, countRes, positionsRes, commentsRes] =
       await Promise.all([
         supabase.from("markets").select("*").eq("status", "active"),
         supabase
@@ -86,6 +91,14 @@ export default function TVPage() {
         supabase
           .from("profiles")
           .select("*", { count: "exact", head: true }),
+        supabase
+          .from("positions")
+          .select("market_id"),
+        supabase
+          .from("comments")
+          .select("id, content, created_at, profiles(username), markets(question)")
+          .order("created_at", { ascending: false })
+          .limit(30),
       ]);
 
     if (marketsRes.data) {
@@ -97,13 +110,20 @@ export default function TVPage() {
         }
       }
 
+      const traderMap: Record<string, number> = {};
+      if (positionsRes.data) {
+        for (const p of positionsRes.data) {
+          traderMap[p.market_id] = (traderMap[p.market_id] ?? 0) + 1;
+        }
+      }
+
       const ranked: RankedMarket[] = (marketsRes.data as Market[]).map(
         (m) => ({
           ...m,
           recentVolume: volumeMap[m.id] ?? 0,
+          traderCount: traderMap[m.id] ?? 0,
         })
       );
-      // Rank by trading volume (leaves) in last 10 min
       ranked.sort((a, b) => {
         if (b.recentVolume !== a.recentVolume)
           return b.recentVolume - a.recentVolume;
@@ -114,18 +134,17 @@ export default function TVPage() {
       const top = ranked.slice(0, TOP_N);
       setTop10(top);
 
-      // Featured: admin-selected market (is_featured = true)
       const featuredRow = featuredRes.data as Market | null;
       const featured =
         featuredRow
           ? {
               ...featuredRow,
               recentVolume: volumeMap[featuredRow.id] ?? 0,
+              traderCount: traderMap[featuredRow.id] ?? 0,
             }
           : null;
       setFeaturedMarket(featured);
 
-      // Fetch probability history for top 10 + featured
       const ids = [...top.map((m) => m.id)];
       if (featured && !ids.includes(featured.id)) ids.push(featured.id);
       if (ids.length > 0) {
@@ -152,6 +171,10 @@ export default function TVPage() {
       setTrades(feedRes.data as TradeWithContext[]);
     }
 
+    if (commentsRes.data) {
+      setComments(commentsRes.data as CommentWithContext[]);
+    }
+
     if (countRes.count != null) {
       setUserCount(countRes.count);
     }
@@ -165,25 +188,6 @@ export default function TVPage() {
     return () => clearInterval(interval);
   }, [fetchAndRank]);
 
-  // When a new trade appears at the top, spawn falling leaves (count = trade volume / 10)
-  useEffect(() => {
-    if (trades.length === 0) return;
-    const firstId = trades[0].id;
-    const prevId = previousFirstTradeIdRef.current;
-    if (prevId !== null && firstId !== prevId) {
-      const amount = Number(trades[0].amount);
-      const count = Math.max(1, Math.floor(amount / 10));
-      const key = firstId;
-      setFallingLeaves((prev) => [...prev, { key, count }]);
-      const t = setTimeout(() => {
-        setFallingLeaves((p) => p.filter((b) => b.key !== key));
-      }, 4000);
-      previousFirstTradeIdRef.current = firstId;
-      return () => clearTimeout(t);
-    }
-    previousFirstTradeIdRef.current = firstId;
-  }, [trades]);
-
   useEffect(() => {
     const supabase = supabaseRef.current;
     const channel = supabase
@@ -191,28 +195,16 @@ export default function TVPage() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "trades" },
-        (payload) => {
-          // Spawn leaves from INSERT payload (Supabase JS uses .new; some docs use .newRecord).
-          const raw =
-            (payload as { new?: unknown; newRecord?: unknown }).new ??
-            (payload as { newRecord?: unknown }).newRecord;
-          const row = raw as Record<string, unknown> | null;
-          const id = row?.id != null ? String(row.id) : null;
-          const amount = Number(row?.amount ?? 0);
-          if (id) {
-            const count = Math.max(1, Math.floor(amount / 10));
-            setFallingLeaves((prev) => [...prev, { key: id, count }]);
-            previousFirstTradeIdRef.current = id;
-            setTimeout(() => {
-              setFallingLeaves((p) => p.filter((b) => b.key !== id));
-            }, 4000);
-          }
-          fetchAndRank();
-        }
+        () => fetchAndRank()
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "markets" },
+        () => fetchAndRank()
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "comments" },
         () => fetchAndRank()
       )
       .subscribe();
@@ -221,7 +213,7 @@ export default function TVPage() {
     };
   }, [fetchAndRank]);
 
-  // Ambient falling leaves — spawn batches continuously, clear periodically
+  // Ambient falling leaves
   useEffect(() => {
     const spawnInterval = setInterval(() => {
       const batch = Array.from({ length: 3 + Math.floor(Math.random() * 3) }, () => {
@@ -237,7 +229,6 @@ export default function TVPage() {
         };
       });
       setAmbientLeaves((prev) => [...prev, ...batch]);
-      // Auto-remove each leaf after its fall duration + buffer
       for (const leaf of batch) {
         setTimeout(() => {
           setAmbientLeaves((prev) => prev.filter((l) => l.id !== leaf.id));
@@ -245,108 +236,160 @@ export default function TVPage() {
       }
     }, 2000);
 
-    // Periodic clear to prevent any buildup
-    const clearInterval_ = setInterval(() => {
-      setAmbientLeaves([]);
-    }, 30000);
-
     return () => {
       clearInterval(spawnInterval);
-      clearInterval(clearInterval_);
     };
   }, []);
 
   if (loading) {
     return (
       <div className="fixed inset-0 bg-background flex items-center justify-center z-[100]">
-        <div className="text-muted text-lg animate-pulse">
-          Loading markets...
-        </div>
+        <Image
+          src="/timbermarket_logo.svg"
+          alt="Timbermarket"
+          width={120}
+          height={120}
+          className="animate-pulse"
+        />
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden p-3">
-      <div className="flex items-center justify-between px-6 py-4 border-b-2 border-border shrink-0">
-        <Link href="/" className="flex items-center gap-3">
+    <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-10 py-4 shrink-0 tv-header-gradient">
+        <Link href="/" className="flex items-center gap-5">
           <Image
             src="/timbermarket_logo.svg"
-            alt="TimberMarket"
-            width={44}
-            height={44}
-            className="shrink-0 w-11 h-11"
+            alt="Timbermarket"
+            width={72}
+            height={72}
+            className="shrink-0"
           />
-          <span className="text-accent font-bold text-2xl font-[family-name:var(--font-gaegu)]">
-            TimberMarket
+          <span className="text-accent font-bold text-5xl font-[family-name:var(--font-gaegu)]">
+            Timbermarket
           </span>
         </Link>
-        {userCount != null && (
-          <span className="text-foreground text-2xl font-bold font-[family-name:var(--font-gaegu)] tabular-nums">
-            {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""}
-          </span>
-        )}
+        <div className="flex items-center gap-8">
+          {userCount != null && (
+            <span className="text-muted text-xl tabular-nums">
+              <span className="text-foreground font-bold text-4xl font-[family-name:var(--font-gaegu)]">
+                {userCount.toLocaleString()}
+              </span>{" "}
+              trader{userCount !== 1 ? "s" : ""}
+            </span>
+          )}
+          <div className="flex items-center gap-3">
+            <span className="tv-live-dot" />
+            <span className="text-lg font-semibold uppercase tracking-widest text-accent">
+              Live
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left panel: top = featured, bottom = top 5 by trading volume; no scroll */}
-        <div className="w-2/3 flex flex-col border-r-2 border-border min-h-0 overflow-hidden">
-          {/* Top: featured market (admin-selected) */}
-          <div className="flex-[0_0_40%] flex flex-col min-h-0 overflow-hidden">
+        {/* Left panel: Recent trades */}
+        <div className="w-1/4 flex flex-col overflow-hidden relative border-r border-border/50">
+          <div className="px-5 py-5 shrink-0 border-b border-border/50">
+            <h2 className="text-lg font-bold uppercase tracking-widest text-muted">
+              Recent Trades
+            </h2>
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-hide relative tv-trades-fade">
+            {trades.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted text-xl">No trades yet</p>
+              </div>
+            ) : (
+              <div>
+                {trades.map((trade) => (
+                  <TVTradeRow key={trade.id} trade={trade} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Center panel: featured market + top markets */}
+        <div className="w-1/2 flex flex-col min-h-0 overflow-hidden">
+          {/* Featured market */}
+          <div className="flex-[0_0_42%] flex flex-col min-h-0 overflow-hidden border-b border-border/50">
             {featuredMarket ? (
               <Link
                 href={`/markets/${featuredMarket.id}`}
-                className="flex-1 flex flex-col min-h-0 min-w-0 px-2 py-4 bg-card/30 hover:bg-card/50 transition-colors"
+                className="flex-1 flex flex-col min-h-0 min-w-0 px-8 py-6 tv-featured-bg transition-colors group"
               >
-                <div className="flex items-start justify-between gap-3 mb-2 shrink-0">
-                  <h2 className="text-3xl font-bold text-foreground leading-tight line-clamp-2 flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-4 shrink-0">
+                  <span className="text-sm font-bold uppercase tracking-widest text-accent bg-accent/10 px-3 py-1.5 rounded-full">
+                    Featured
+                  </span>
+                  {featuredMarket.recentVolume > 0 && (
+                    <span className="text-sm font-medium uppercase tracking-wider text-yes bg-yes/10 px-3 py-1.5 rounded-full tv-trending-pulse">
+                      Trending
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-start justify-between gap-8 mb-4 shrink-0">
+                  <h2 className="text-4xl font-bold text-foreground leading-tight line-clamp-2 flex-1 min-w-0 group-hover:text-accent transition-colors">
                     {featuredMarket.question}
                   </h2>
-                  <div
-                    className={`text-3xl font-bold tabular-nums shrink-0 ${
-                      featuredMarket.probability >= 0.5 ? "text-yes" : "text-no"
-                    }`}
-                  >
-                    {Math.round(featuredMarket.probability * 100)}%
+                  <div className="shrink-0 flex flex-col items-end">
+                    <div
+                      className={`text-7xl font-black tabular-nums leading-none ${
+                        featuredMarket.probability >= 0.5 ? "text-yes" : "text-no"
+                      }`}
+                    >
+                      {Math.round(featuredMarket.probability * 100)}%
+                    </div>
+                    <span className="text-lg text-muted mt-1">chance</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted mb-3 shrink-0">
-                  <span>Created {timeAgo(featuredMarket.created_at)}</span>
-                  <span className="text-accent font-medium">
-                    {formatLeaves(featuredMarket.recentVolume)} vol in last 10 min
+                <div className="flex items-center gap-5 text-xl text-muted mb-4 shrink-0">
+                  <span className="flex items-center gap-1">
+                    volume {formatLeaves(featuredMarket.volume)} <LeafIcon />
                   </span>
-                  <span>{formatLeaves(featuredMarket.volume)} total volume</span>
+                  <span className="text-border">|</span>
+                  <span>
+                    {featuredMarket.traderCount} trader{featuredMarket.traderCount !== 1 ? "s" : ""}
+                  </span>
                 </div>
-                <div className="w-full max-h-[213px] rounded-lg overflow-hidden border-2 border-border shrink-0 p-2">
+                <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-border/50 bg-background/30">
                   <FeaturedChart
                     marketId={featuredMarket.id}
                     data={historyByMarket[featuredMarket.id] ?? []}
                     currentProb={featuredMarket.probability}
-                    height={197}
+                    height="100%"
                   />
                 </div>
               </Link>
             ) : (
-              <div className="flex-1 flex items-center justify-center p-4 bg-card/30">
-                <p className="text-muted text-sm">
+              <div className="flex-1 flex items-center justify-center p-4 bg-card/20">
+                <p className="text-muted text-xl">
                   No featured market (set one in Admin)
                 </p>
               </div>
             )}
           </div>
-          {/* Bottom: top 5 list (takes remaining space, meets top) */}
+
+          {/* Top markets list */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-2 gap-2">
+            <div className="px-6 pt-5 pb-3 shrink-0">
+              <h3 className="text-lg font-bold uppercase tracking-widest text-muted">
+                All Markets
+              </h3>
+            </div>
+            <div className="flex-1 flex flex-col justify-start min-h-0 overflow-hidden px-4 pb-3 gap-3">
               {top10.length === 0 ? (
                 <div className="flex items-center justify-center flex-1 min-h-0">
-                  <p className="text-muted text-sm">No active markets</p>
+                  <p className="text-muted text-xl">No active markets</p>
                 </div>
               ) : (
-                top10.slice(0, LIST_COUNT).map((market, i) => (
+                top10.slice(0, LIST_COUNT).map((market) => (
                   <TVMarketBlock
                     key={market.id}
                     market={market}
-                    rank={i + 1}
                   />
                 ))
               )}
@@ -354,79 +397,39 @@ export default function TVPage() {
           </div>
         </div>
 
-        {/* Right panel: Recent trades */}
-        <div className="w-1/3 flex flex-col overflow-hidden relative">
-          <div className="px-5 py-4 border-b-2 border-border shrink-0">
-            <h2 className="text-lg font-semibold text-foreground">
-              Recent Trades
+        {/* Right panel: Recent chat messages */}
+        <div className="w-1/4 flex flex-col overflow-hidden relative border-l border-border/50">
+          <div className="px-5 py-5 shrink-0 border-b border-border/50">
+            <h2 className="text-lg font-bold uppercase tracking-widest text-muted">
+              Chat
             </h2>
           </div>
-          <div className="flex-1 overflow-y-auto relative">
-            {trades.length === 0 ? (
+          <div className="flex-1 overflow-y-auto scrollbar-hide relative tv-trades-fade">
+            {comments.length === 0 ? (
               <div className="flex items-center justify-center h-full">
-                <p className="text-muted text-sm">No trades yet</p>
+                <p className="text-muted text-xl">No messages yet</p>
               </div>
             ) : (
-              <div className="divide-y-2 divide-border">
-                {trades.map((trade) => (
-                  <TVTradeRow key={trade.id} trade={trade} />
+              <div>
+                {comments.map((comment) => (
+                  <TVCommentRow key={comment.id} comment={comment} />
                 ))}
               </div>
             )}
           </div>
-          {/* Falling leaves overlay when new trades arrive */}
-          <div
-            className="absolute inset-0 pointer-events-none overflow-hidden z-10"
-            aria-hidden
-          >
-            {fallingLeaves.map((burst) => {
-              const count = burst.count;
-              const bandWidth = 90 / Math.max(1, count);
-              return Array.from({ length: count }, (_, i) => {
-                const seed = `${burst.key}-${i}`;
-                const hash = (s: string) => {
-                  let h = 0;
-                  for (let j = 0; j < s.length; j++)
-                    h = ((h << 5) - h + s.charCodeAt(j)) | 0;
-                  return Math.abs(h);
-                };
-                const h1 = hash(seed);
-                const h2 = hash(seed + "x");
-                const h3 = hash(seed + "y");
-                const left =
-                  5 +
-                  i * bandWidth +
-                  (h1 % 100) / 100 * bandWidth;
-                const topOffset = -2 - (h2 % 24) / 4;
-                const wiggleDuration = 0.35 + (h3 % 45) / 100;
-                const wiggleDelay = (h2 % 40) / 100;
-                const fallDuration = 2.2 + (h1 % 180) / 100;
-                const fallDelay = (h2 % 50) / 100;
-                return (
-                  <span
-                    key={`${burst.key}-${i}`}
-                    className="leaf-fall absolute text-2xl opacity-90"
-                    style={{
-                      left: `${left}%`,
-                      top: `${topOffset}rem`,
-                      animationDuration: `${fallDuration}s`,
-                      animationDelay: `${fallDelay}s`,
-                    }}
-                  >
-                    <span
-                      className="leaf-wiggle"
-                      style={{
-                        animationDuration: `${wiggleDuration}s`,
-                        animationDelay: `${wiggleDelay}s`,
-                      }}
-                    >
-                      🍃
-                    </span>
-                  </span>
-                );
-              });
-            })}
-          </div>
+        </div>
+      </div>
+
+      {/* QR code in bottom-right corner, spanning the chat column width */}
+      <div className="absolute bottom-0 right-0 w-1/4 z-30 p-4">
+        <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 bg-white p-3">
+          <Image
+            src="/code.png"
+            alt="QR Code"
+            width={400}
+            height={400}
+            className="w-full h-auto"
+          />
         </div>
       </div>
 
@@ -470,10 +473,8 @@ export default function TVPage() {
 
 function TVMarketBlock({
   market,
-  rank,
 }: {
   market: RankedMarket;
-  rank: number;
 }) {
   const yesPercent = Math.round(market.probability * 100);
   const noPercent = 100 - yesPercent;
@@ -481,37 +482,36 @@ function TVMarketBlock({
   return (
     <Link
       href={`/markets/${market.id}`}
-      className="flex-1 min-h-0 flex min-w-0 overflow-hidden"
+      className="min-w-0 overflow-hidden group shrink-0"
     >
-      <div className="bg-card border border-border rounded px-2 py-2.5 hover:border-border/80 hover:bg-card-hover transition-all flex flex-col gap-1 w-full min-h-0 flex-1 overflow-hidden">
-        <div className="flex items-baseline justify-between gap-2 min-w-0">
-          <div className="flex items-baseline gap-1.5 min-w-0 flex-1 overflow-hidden">
-            <span className="text-lg font-bold text-border tabular-nums shrink-0 w-4">
-              {rank}
-            </span>
-            <h2 className="text-foreground font-medium text-lg leading-tight truncate min-w-0">
-              {market.question}
-            </h2>
-          </div>
-          <div className="text-lg font-bold tabular-nums leading-tight shrink-0 text-foreground">
+      <div className="bg-card/60 border border-border/40 rounded-lg hover:bg-card-hover hover:border-border/80 transition-all flex flex-col w-full overflow-hidden">
+        <div className="flex items-center justify-between gap-4 min-w-0 px-5 pt-3 pb-1.5">
+          <h2 className="text-foreground font-semibold text-xl leading-tight truncate min-w-0 flex-1 group-hover:text-accent transition-colors">
+            {market.question}
+          </h2>
+          <div
+            className={`text-2xl font-black tabular-nums leading-tight shrink-0 ${
+              yesPercent >= 50 ? "text-yes" : "text-no"
+            }`}
+          >
             {yesPercent}%
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <span className="text-yes font-medium truncate">
-            {formatLeaves(market.recentVolume)} vol
+        <div className="flex items-center gap-4 px-5 pb-2.5 text-sm text-muted">
+          <span className="flex items-center gap-1">
+            volume {formatLeaves(market.volume)} <LeafIcon />
           </span>
-          <span className="truncate">
-            {formatLeaves(market.volume)} vol
+          <span>
+            {market.traderCount} trader{market.traderCount !== 1 ? "s" : ""}
           </span>
         </div>
-        <div className="flex h-1 w-full rounded-full overflow-hidden bg-border/30 gap-px">
+        <div className="flex h-2.5 w-full overflow-hidden bg-border/20 gap-px rounded-b-lg">
           <div
-            className="bg-yes/80 rounded-l-full transition-all duration-300"
+            className="bg-yes transition-all duration-500"
             style={{ width: `${yesPercent}%` }}
           />
           <div
-            className="bg-no/80 rounded-r-full transition-all duration-300"
+            className="bg-no transition-all duration-500"
             style={{ width: `${noPercent}%` }}
           />
         </div>
@@ -545,7 +545,7 @@ function FeaturedChart({
         <AreaChart data={single}>
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.3} />
+              <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.35} />
               <stop offset="95%" stopColor="var(--color-yes)" stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -561,17 +561,17 @@ function FeaturedChart({
               })
             }
             stroke="var(--color-muted)"
-            fontSize={11}
+            fontSize={16}
             tickLine={false}
-            axisLine={{ stroke: "var(--color-border)" }}
+            axisLine={false}
           />
           <YAxis
             domain={[0, 100]}
             tickFormatter={(v) => `${v}%`}
             stroke="var(--color-muted)"
-            fontSize={11}
+            fontSize={16}
             tickLine={false}
-            axisLine={{ stroke: "var(--color-border)" }}
+            axisLine={false}
             width={40}
           />
           <Area
@@ -579,24 +579,46 @@ function FeaturedChart({
             dataKey="probability"
             stroke="var(--color-yes)"
             fill={`url(#${gradId})`}
-            strokeWidth={2}
+            strokeWidth={2.5}
           />
         </AreaChart>
       </ResponsiveContainer>
     );
   }
 
-  const chartData = data.map((p) => ({
+  const rawData = data.map((p) => ({
     time: new Date(p.created_at).getTime(),
     probability: Math.round(p.probability * 100),
   }));
   const endTime = Date.now();
-  const last = chartData[chartData.length - 1];
+  const last = rawData[rawData.length - 1];
   if (last && last.time < endTime) {
-    chartData.push({ time: endTime, probability: last.probability });
+    rawData.push({ time: endTime, probability: last.probability });
   }
 
-  const firstTime = chartData[0]?.time ?? endTime;
+  const chartData: { time: number; probability: number }[] = [];
+  const TARGET_POINTS = 200;
+  if (rawData.length >= 2) {
+    const totalSpan = rawData[rawData.length - 1].time - rawData[0].time;
+    const step = totalSpan / TARGET_POINTS;
+    for (let i = 0; i < rawData.length - 1; i++) {
+      const curr = rawData[i];
+      const next = rawData[i + 1];
+      chartData.push(curr);
+      if (step > 0) {
+        let t = curr.time + step;
+        while (t < next.time) {
+          chartData.push({ time: t, probability: curr.probability });
+          t += step;
+        }
+      }
+    }
+    chartData.push(rawData[rawData.length - 1]);
+  } else {
+    chartData.push(...rawData);
+  }
+
+  const firstTime = rawData[0]?.time ?? endTime;
   const timeSpan = endTime - firstTime;
   const isShortSpan = timeSpan < 24 * 60 * 60 * 1000;
   const firstDate = new Date(firstTime);
@@ -626,7 +648,7 @@ function FeaturedChart({
       <AreaChart data={chartData}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.3} />
+            <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.35} />
             <stop offset="95%" stopColor="var(--color-yes)" stopOpacity={0} />
           </linearGradient>
         </defs>
@@ -638,7 +660,7 @@ function FeaturedChart({
           stroke="var(--color-muted)"
           fontSize={11}
           tickLine={false}
-          axisLine={{ stroke: "var(--color-border)" }}
+          axisLine={false}
         />
         <YAxis
           domain={[0, 100]}
@@ -646,7 +668,7 @@ function FeaturedChart({
           stroke="var(--color-muted)"
           fontSize={11}
           tickLine={false}
-          axisLine={{ stroke: "var(--color-border)" }}
+          axisLine={false}
           width={40}
         />
         <Area
@@ -654,7 +676,7 @@ function FeaturedChart({
           dataKey="probability"
           stroke="var(--color-yes)"
           fill={`url(#${gradId})`}
-          strokeWidth={2}
+          strokeWidth={2.5}
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -663,42 +685,87 @@ function FeaturedChart({
 
 function TVTradeRow({ trade }: { trade: TradeWithContext }) {
   const marketQuestion = trade.markets?.question ?? "Unknown market";
+  const isYes = trade.outcome === "YES";
+  const isRedeem = trade.type === "REDEEM";
 
   return (
-    <div className="px-5 py-3 hover:bg-card-hover/50 transition-colors">
-      <div className="text-sm text-muted truncate mb-1.5">
-        {marketQuestion}
+    <div className="tv-trade-row px-5 py-2.5 transition-colors relative">
+      <div
+        className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${
+          isRedeem ? "bg-accent" : isYes ? "bg-yes" : "bg-no"
+        }`}
+      />
+      <div className="flex items-center justify-between mb-0.5">
+        <div className="text-base text-muted truncate min-w-0 flex-1 mr-2">
+          {marketQuestion}
+        </div>
+        <span className="text-base text-muted shrink-0 tabular-nums">
+          {timeAgo(trade.created_at)}
+        </span>
       </div>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-sm">
-          <span className="text-foreground font-medium">
+        <div className="flex items-center gap-2 text-xl">
+          <span className="text-foreground font-semibold">
             {trade.profiles?.username ?? "User"}
           </span>
-          <span className="text-muted">
-            {trade.type === "BUY" ? "bought" : trade.type === "REDEEM" ? "redeemed" : "sold"}
+          <span
+            className={`text-sm font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+              trade.type === "BUY"
+                ? "bg-yes/10 text-yes"
+                : trade.type === "REDEEM"
+                  ? "bg-accent/10 text-accent"
+                  : "bg-no/10 text-no"
+            }`}
+          >
+            {trade.type === "BUY" ? "Buy" : trade.type === "REDEEM" ? "Redeem" : "Sell"}
           </span>
-          {trade.type === "REDEEM" ? (
-            <span className="font-semibold text-accent">pairs</span>
-          ) : (
+          {!isRedeem && (
             <span
               className={`font-semibold ${
-                trade.outcome === "YES" ? "text-yes" : "text-no"
+                isYes ? "text-yes" : "text-no"
               }`}
             >
               {trade.outcome}
             </span>
           )}
         </div>
-        <span className="text-xs text-muted shrink-0">
-          {timeAgo(trade.created_at)}
+        <div className="flex items-center gap-2 text-base text-muted shrink-0">
+          <span className="flex items-center gap-1">
+            {formatLeaves(trade.amount)} <LeafIcon />
+          </span>
+          <span className="tabular-nums">
+            {formatProbability(trade.prob_before)} → {formatProbability(trade.prob_after)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TVCommentRow({ comment }: { comment: CommentWithContext }) {
+  const profile = Array.isArray(comment.profiles)
+    ? comment.profiles[0]
+    : comment.profiles;
+  const market = Array.isArray(comment.markets)
+    ? comment.markets[0]
+    : comment.markets;
+
+  return (
+    <div className="tv-trade-row px-5 py-1.5 transition-colors">
+      <div className="flex items-center justify-between mb-0.5">
+        <div className="text-base text-muted truncate min-w-0 flex-1 mr-2">
+          {market?.question ?? "Unknown market"}
+        </div>
+        <span className="text-base text-muted shrink-0 tabular-nums">
+          {timeAgo(comment.created_at)}
         </span>
       </div>
-      <div className="flex items-center gap-3 mt-1 text-xs text-muted">
-        <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
-        <span>{formatShares(trade.shares)} shares</span>
-        <span>
-          {formatProbability(trade.prob_before)} →{" "}
-          {formatProbability(trade.prob_after)}
+      <div className="flex items-baseline gap-2 min-w-0">
+        <span className="text-lg text-foreground font-semibold shrink-0">
+          {profile?.username ?? "User"}
+        </span>
+        <span className="text-base text-foreground truncate min-w-0">
+          {comment.content}
         </span>
       </div>
     </div>

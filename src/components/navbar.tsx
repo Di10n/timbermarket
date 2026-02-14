@@ -28,12 +28,12 @@ export default async function Navbar() {
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/timbermarket_logo.svg"
-              alt="TimberMarket"
+              alt="Timbermarket"
               width={36}
               height={36}
               className="shrink-0"
             />
-            <span className="text-accent font-bold text-base sm:text-lg font-[family-name:var(--font-gaegu)]">TimberMarket</span>
+            <span className="text-accent font-bold text-base sm:text-lg font-[family-name:var(--font-gaegu)]">Timbermarket</span>
           </Link>
           {/* Desktop nav - hide on mobile */}
           <div className="hidden lg:flex items-center gap-4 text-sm">

@@ -65,6 +65,7 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
                 >
                   {question}
                 </Link>
+                <span className="text-muted"> · {formatLeaves(trade.amount)} <LeafIcon /></span>
               </div>
             );
           })}

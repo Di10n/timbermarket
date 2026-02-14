@@ -19,7 +19,7 @@ const gaegu = Gaegu({
 });
 
 export const metadata: Metadata = {
-  title: "TimberMarket",
+  title: "Timbermarket",
   description: "Prediction market platform",
   icons: {
     icon: "/timbermarket_logo.svg",
