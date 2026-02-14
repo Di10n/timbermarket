@@ -81,25 +81,23 @@ export function LeaderboardEntry({
         </div>
 
         {/* Expand indicator */}
-        {positions.length > 0 && (
-          <div className="shrink-0 w-5 text-muted">
-            <svg
-              className={`w-4 h-4 transition-transform ${
-                isExpanded ? 'rotate-180' : ''
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </div>
-        )}
+        <div className="shrink-0 w-5 text-muted">
+          <svg
+            className={`w-4 h-4 transition-transform ${
+              isExpanded ? 'rotate-180' : ''
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
       </button>
 
       {/* Expanded positions */}
