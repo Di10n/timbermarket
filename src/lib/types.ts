@@ -68,3 +68,11 @@ export interface CommentWithProfile extends Comment {
   profiles: Pick<Profile, "username">;
   positions?: Pick<Position, "yes_shares" | "no_shares"> | null;
 }
+
+export interface MarketIdea {
+  id: string;
+  user_id: string;
+  question: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}

@@ -5,6 +5,7 @@ import HomeCarousel from "@/components/home-carousel";
 import Leaderboard from "@/components/leaderboard";
 import RecentTrades from "@/components/recent-trades";
 import MarketCard from "@/components/market-card";
+import SuggestMarket from "@/components/suggest-market";
 import type { Market, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -182,6 +183,7 @@ export default async function Home() {
                   commentCount={commentCountMap.get(market.id) || 0}
                 />
               ))}
+              <SuggestMarket isLoggedIn={!!user} />
             </div>
           </div>
 
