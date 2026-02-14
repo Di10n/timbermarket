@@ -149,8 +149,8 @@ export default async function Home() {
             <HomeCarousel marketsWithHistory={carouselWithHistory} />
 
             <div className="mt-6">
-              <h2 className="text-lg font-semibold text-foreground mb-2">Markets</h2>
-              <div>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Markets</h2>
+              <div className="space-y-4">
                 {topMarkets.map((market) => (
                   <MarketCard key={market.id} market={market} />
                 ))}
