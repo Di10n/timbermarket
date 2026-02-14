@@ -51,6 +51,7 @@ export default function TVPage() {
   const [fallingLeaves, setFallingLeaves] = useState<
     { key: string; count: number }[]
   >([]);
+  const [userCount, setUserCount] = useState<number | null>(null);
   const supabaseRef = useRef(createClient());
   const previousFirstTradeIdRef = useRef<string | null>(null);
 
@@ -58,24 +59,28 @@ export default function TVPage() {
     const supabase = supabaseRef.current;
     const since = new Date(Date.now() - RANKING_WINDOW).toISOString();
 
-    const [marketsRes, featuredRes, windowRes, feedRes] = await Promise.all([
-      supabase.from("markets").select("*").eq("status", "active"),
-      supabase
-        .from("markets")
-        .select("*")
-        .eq("status", "active")
-        .eq("is_featured", true)
-        .maybeSingle(),
-      supabase
-        .from("trades")
-        .select("market_id, amount, created_at")
-        .gte("created_at", since),
-      supabase
-        .from("trades")
-        .select("*, profiles(username), markets(question)")
-        .order("created_at", { ascending: false })
-        .limit(30),
-    ]);
+    const [marketsRes, featuredRes, windowRes, feedRes, countRes] =
+      await Promise.all([
+        supabase.from("markets").select("*").eq("status", "active"),
+        supabase
+          .from("markets")
+          .select("*")
+          .eq("status", "active")
+          .eq("is_featured", true)
+          .maybeSingle(),
+        supabase
+          .from("trades")
+          .select("market_id, amount, created_at")
+          .gte("created_at", since),
+        supabase
+          .from("trades")
+          .select("*, profiles(username), markets(question)")
+          .order("created_at", { ascending: false })
+          .limit(30),
+        supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true }),
+      ]);
 
     if (marketsRes.data) {
       const volumeMap: Record<string, number> = {};
@@ -141,6 +146,10 @@ export default function TVPage() {
       setTrades(feedRes.data as TradeWithContext[]);
     }
 
+    if (countRes.count != null) {
+      setUserCount(countRes.count);
+    }
+
     setLoading(false);
   }, []);
 
@@ -176,7 +185,24 @@ export default function TVPage() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "trades" },
-        () => fetchAndRank()
+        (payload) => {
+          // Spawn leaves from INSERT payload (Supabase JS uses .new; some docs use .newRecord).
+          const raw =
+            (payload as { new?: unknown; newRecord?: unknown }).new ??
+            (payload as { newRecord?: unknown }).newRecord;
+          const row = raw as Record<string, unknown> | null;
+          const id = row?.id != null ? String(row.id) : null;
+          const amount = Number(row?.amount ?? 0);
+          if (id) {
+            const count = Math.max(1, Math.floor(amount / 10));
+            setFallingLeaves((prev) => [...prev, { key: id, count }]);
+            previousFirstTradeIdRef.current = id;
+            setTimeout(() => {
+              setFallingLeaves((p) => p.filter((b) => b.key !== id));
+            }, 4000);
+          }
+          fetchAndRank();
+        }
       )
       .on(
         "postgres_changes",
@@ -214,6 +240,11 @@ export default function TVPage() {
             TimberMarket
           </span>
         </Link>
+        {userCount != null && (
+          <span className="text-foreground text-base font-medium tabular-nums">
+            {userCount.toLocaleString()} user{userCount !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -304,7 +335,7 @@ export default function TVPage() {
           </div>
           {/* Falling leaves overlay when new trades arrive */}
           <div
-            className="absolute inset-0 pointer-events-none overflow-hidden"
+            className="absolute inset-0 pointer-events-none overflow-hidden z-10"
             aria-hidden
           >
             {fallingLeaves.map((burst) => {
