@@ -54,6 +54,10 @@ export default function TVPage() {
     { key: string; count: number }[]
   >([]);
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [ambientLeaves, setAmbientLeaves] = useState<
+    { id: number; left: number; fallDuration: number; swayDuration: number; swayDelay: number; size: number; rotation: number }[]
+  >([]);
+  const ambientIdRef = useRef(0);
   const supabaseRef = useRef(createClient());
   const previousFirstTradeIdRef = useRef<string | null>(null);
 
@@ -216,6 +220,41 @@ export default function TVPage() {
       void supabase.removeChannel(channel);
     };
   }, [fetchAndRank]);
+
+  // Ambient falling leaves — spawn batches continuously, clear periodically
+  useEffect(() => {
+    const spawnInterval = setInterval(() => {
+      const batch = Array.from({ length: 3 + Math.floor(Math.random() * 3) }, () => {
+        const id = ambientIdRef.current++;
+        return {
+          id,
+          left: Math.random() * 100,
+          fallDuration: 8 + Math.random() * 6,
+          swayDuration: 3 + Math.random() * 3,
+          swayDelay: Math.random() * 2,
+          size: 30 + Math.random() * 20,
+          rotation: Math.random() * 360,
+        };
+      });
+      setAmbientLeaves((prev) => [...prev, ...batch]);
+      // Auto-remove each leaf after its fall duration + buffer
+      for (const leaf of batch) {
+        setTimeout(() => {
+          setAmbientLeaves((prev) => prev.filter((l) => l.id !== leaf.id));
+        }, (leaf.fallDuration + 1) * 1000);
+      }
+    }, 2000);
+
+    // Periodic clear to prevent any buildup
+    const clearInterval_ = setInterval(() => {
+      setAmbientLeaves([]);
+    }, 30000);
+
+    return () => {
+      clearInterval(spawnInterval);
+      clearInterval(clearInterval_);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -389,6 +428,41 @@ export default function TVPage() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* Ambient falling SVG leaves overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden z-20"
+        aria-hidden
+      >
+        {ambientLeaves.map((leaf) => (
+          <div
+            key={leaf.id}
+            className="ambient-leaf-fall absolute"
+            style={{
+              left: `${leaf.left}%`,
+              top: '-60px',
+              ['--fall-duration' as string]: `${leaf.fallDuration}s`,
+              opacity: 0.55,
+            }}
+          >
+            <div
+              className="ambient-leaf-sway"
+              style={{
+                ['--sway-duration' as string]: `${leaf.swayDuration}s`,
+                ['--sway-delay' as string]: `${leaf.swayDelay}s`,
+              }}
+            >
+              <img
+                src="/leaves.svg"
+                alt=""
+                width={leaf.size}
+                height={leaf.size}
+                style={{ transform: `rotate(${leaf.rotation}deg)` }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
