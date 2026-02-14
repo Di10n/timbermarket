@@ -10,6 +10,7 @@ import {
   timeAgo,
 } from "@/lib/utils";
 import Link from "next/link";
+import Image from "next/image";
 import {
   AreaChart,
   Area,
@@ -20,8 +21,8 @@ import {
 
 const RANKING_WINDOW = 10 * 60 * 1000; // 10 minutes
 const POLL_INTERVAL = 3_000; // poll every 3 seconds
-const ROTATE_INTERVAL = 10_000; // rotate featured market every 10 seconds
 const TOP_N = 10;
+const LIST_COUNT = 5;
 
 interface TradeWithContext extends Trade {
   profiles?: { username: string };
@@ -30,7 +31,7 @@ interface TradeWithContext extends Trade {
 
 interface RankedMarket extends Market {
   recentVolume: number;
-  recentTradeCount: number;
+  recentShares: number; // total shares traded in window (what we call "recent trades")
 }
 
 interface ProbPoint {
@@ -41,23 +42,31 @@ interface ProbPoint {
 export default function TVPage() {
   const [markets, setMarkets] = useState<RankedMarket[]>([]);
   const [top10, setTop10] = useState<RankedMarket[]>([]);
+  const [featuredMarket, setFeaturedMarket] = useState<RankedMarket | null>(
+    null
+  );
   const [historyByMarket, setHistoryByMarket] = useState<
     Record<string, ProbPoint[]>
   >({});
   const [trades, setTrades] = useState<TradeWithContext[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const supabaseRef = useRef(createClient());
 
   const fetchAndRank = useCallback(async () => {
     const supabase = supabaseRef.current;
     const since = new Date(Date.now() - RANKING_WINDOW).toISOString();
 
-    const [marketsRes, windowRes, feedRes] = await Promise.all([
+    const [marketsRes, featuredRes, windowRes, feedRes] = await Promise.all([
       supabase.from("markets").select("*").eq("status", "active"),
       supabase
+        .from("markets")
+        .select("*")
+        .eq("status", "active")
+        .eq("is_featured", true)
+        .maybeSingle(),
+      supabase
         .from("trades")
-        .select("market_id, amount, created_at")
+        .select("market_id, amount, created_at, shares")
         .gte("created_at", since),
       supabase
         .from("trades")
@@ -68,12 +77,13 @@ export default function TVPage() {
 
     if (marketsRes.data) {
       const volumeMap: Record<string, number> = {};
-      const tradeCountMap: Record<string, number> = {};
+      const sharesMap: Record<string, number> = {};
       if (windowRes.data) {
         for (const t of windowRes.data) {
           volumeMap[t.market_id] =
             (volumeMap[t.market_id] ?? 0) + Number(t.amount);
-          tradeCountMap[t.market_id] = (tradeCountMap[t.market_id] ?? 0) + 1;
+          sharesMap[t.market_id] =
+            (sharesMap[t.market_id] ?? 0) + Number(t.shares);
         }
       }
 
@@ -81,7 +91,7 @@ export default function TVPage() {
         (m) => ({
           ...m,
           recentVolume: volumeMap[m.id] ?? 0,
-          recentTradeCount: tradeCountMap[m.id] ?? 0,
+          recentShares: sharesMap[m.id] ?? 0,
         })
       );
       ranked.sort((a, b) => {
@@ -94,9 +104,22 @@ export default function TVPage() {
       const top = ranked.slice(0, TOP_N);
       setTop10(top);
 
-      // Fetch probability history for top 10 markets
-      if (top.length > 0) {
-        const ids = top.map((m) => m.id);
+      // Featured: admin-selected market (is_featured = true)
+      const featuredRow = featuredRes.data as Market | null;
+      const featured =
+        featuredRow
+          ? {
+              ...featuredRow,
+              recentVolume: volumeMap[featuredRow.id] ?? 0,
+              recentShares: sharesMap[featuredRow.id] ?? 0,
+            }
+          : null;
+      setFeaturedMarket(featured);
+
+      // Fetch probability history for top 10 + featured
+      const ids = [...top.map((m) => m.id)];
+      if (featured && !ids.includes(featured.id)) ids.push(featured.id);
+      if (ids.length > 0) {
         const { data: historyRows } = await supabase
           .from("probability_history")
           .select("market_id, probability, created_at")
@@ -129,15 +152,6 @@ export default function TVPage() {
     return () => clearInterval(interval);
   }, [fetchAndRank]);
 
-  // Rotate through top 10
-  useEffect(() => {
-    if (top10.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentIndex((i) => (i + 1) % top10.length);
-    }, ROTATE_INTERVAL);
-    return () => clearInterval(interval);
-  }, [top10.length]);
-
   useEffect(() => {
     const supabase = supabaseRef.current;
     const channel = supabase
@@ -168,123 +182,93 @@ export default function TVPage() {
     );
   }
 
-  const featured = top10[currentIndex];
-
   return (
     <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-accent font-bold text-xl">
-            Timbermarket
-          </Link>
-          <span className="text-muted text-sm font-medium tracking-wide uppercase">
-            Live
+        <Link href="/" className="flex items-center gap-3">
+          <Image
+            src="/timbermarket_logo.svg"
+            alt="TimberMarket"
+            width={36}
+            height={36}
+            className="shrink-0"
+          />
+          <span className="text-accent font-bold text-lg font-[family-name:var(--font-gaegu)]">
+            TimberMarket
           </span>
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yes opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yes" />
-          </span>
-        </div>
-        <div className="text-muted text-xs">
-          Top {TOP_N} by 10 min volume · Rotating every 10s
-        </div>
+        </Link>
+        <span className="text-muted text-xs">
+          Top {TOP_N} by 10 min volume
+        </span>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left panel: single rotating featured market card */}
-        <div className="w-2/3 flex flex-col border-r border-border/50">
-          <div className="flex-1 overflow-hidden p-6 min-h-0 flex flex-col">
-            {top10.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-muted text-lg">No active markets</p>
-              </div>
-            ) : (
+        {/* Left panel: top = featured, bottom = top 5 by trading volume; no scroll */}
+        <div className="w-2/3 flex flex-col border-r border-border/50 min-h-0 overflow-hidden">
+          {/* Top half: featured market (admin-selected) */}
+          <div className="h-1/2 flex flex-col min-h-0 overflow-hidden border-b border-border/50">
+            {featuredMarket ? (
               <Link
-                href={`/markets/${featured.id}`}
-                className="flex flex-col h-full rounded-2xl bg-card border border-border overflow-hidden hover:border-border/80 hover:bg-card-hover transition-all"
+                href={`/markets/${featuredMarket.id}`}
+                className="flex-1 flex flex-col min-h-0 min-w-0 p-4 bg-card/30 hover:bg-card/50 transition-colors"
               >
-                {/* Question + timestamp + volume */}
-                <div className="p-6 pb-2 shrink-0">
-                  <h2 className="text-xl font-bold text-foreground leading-tight mb-2">
-                    {featured.question}
+                <div className="flex items-start justify-between gap-3 mb-2 shrink-0">
+                  <h2 className="text-base font-bold text-foreground leading-tight line-clamp-2 flex-1 min-w-0">
+                    {featuredMarket.question}
                   </h2>
-                  <div className="flex items-center gap-4 text-sm text-muted flex-wrap">
-                    <span>Created {timeAgo(featured.created_at)}</span>
-                    <span className="text-accent font-medium">
-                      {featured.recentTradeCount} trades in last 10 min
-                    </span>
-                    <span>{formatLeaves(featured.volume)} total volume</span>
+                  <div
+                    className={`text-2xl font-bold tabular-nums shrink-0 ${
+                      featuredMarket.probability >= 0.5 ? "text-yes" : "text-no"
+                    }`}
+                  >
+                    {Math.round(featuredMarket.probability * 100)}%
                   </div>
                 </div>
-
-                {/* Big Yes / No percentages */}
-                <div className="px-6 py-4 flex gap-12 shrink-0">
-                  <div>
-                    <div className="text-4xl font-bold text-yes tabular-nums">
-                      {Math.round(featured.probability * 100)}%
-                    </div>
-                    <div className="text-sm font-medium text-foreground mt-0.5">
-                      Yes
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-4xl font-bold text-no tabular-nums">
-                      {Math.round((1 - featured.probability) * 100)}%
-                    </div>
-                    <div className="text-sm font-medium text-foreground mt-0.5">
-                      No
-                    </div>
-                  </div>
+                <div className="flex items-center gap-3 text-xs text-muted mb-3 shrink-0">
+                  <span>Created {timeAgo(featuredMarket.created_at)}</span>
+                  <span className="text-accent font-medium">
+                    {formatShares(featuredMarket.recentShares)} shares in last 10 min
+                  </span>
+                  <span>{formatLeaves(featuredMarket.volume)} total volume</span>
                 </div>
-
-                {/* Probability trend chart */}
-                <div className="flex-1 min-h-0 px-6 pb-6 flex flex-col">
-                  <div className="bg-background/60 border border-border/50 rounded-xl p-4 flex-1 min-h-[200px]">
-                    <h3 className="text-sm font-medium text-foreground mb-3">
-                      Probability
-                    </h3>
-                    <FeaturedChart
-                      marketId={featured.id}
-                      data={historyByMarket[featured.id] ?? []}
-                      currentProb={featured.probability}
-                    />
-                  </div>
+                <div className="flex-1 min-h-0 w-full rounded-lg overflow-hidden border border-border/50">
+                  <FeaturedChart
+                    marketId={featuredMarket.id}
+                    data={historyByMarket[featuredMarket.id] ?? []}
+                    currentProb={featuredMarket.probability}
+                    height="100%"
+                  />
                 </div>
-
-                {/* Rotation dots */}
-                {top10.length > 1 && (
-                  <div className="flex justify-center gap-1.5 pb-4 shrink-0">
-                    {top10.map((_, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        aria-label={`Go to market ${i + 1}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentIndex(i);
-                        }}
-                        className={`h-2 rounded-full transition-all ${
-                          i === currentIndex
-                            ? "w-6 bg-accent"
-                            : "w-2 bg-border hover:bg-muted"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
               </Link>
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-4 bg-card/30">
+                <p className="text-muted text-sm">
+                  No featured market (set one in Admin)
+                </p>
+              </div>
             )}
           </div>
-
-          {/* Comments placeholder */}
-          <div className="shrink-0 h-56 border-t border-border/50 flex flex-col">
-            <div className="px-6 py-3 border-b border-border/50 shrink-0">
-              <h2 className="text-sm font-semibold text-foreground">
-                Comments
+          {/* Bottom half: top 5 by recent trading volume (fits without scroll) */}
+          <div className="h-1/2 flex flex-col min-h-0 overflow-hidden">
+            <div className="px-4 py-1 border-b border-border/50 shrink-0">
+              <h2 className="text-xs font-semibold text-muted uppercase tracking-wide">
+                Top {LIST_COUNT} by recent trading volume
               </h2>
             </div>
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-muted text-sm">Comments coming soon</p>
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-2 gap-1">
+              {top10.length === 0 ? (
+                <div className="flex items-center justify-center flex-1 min-h-0">
+                  <p className="text-muted text-sm">No active markets</p>
+                </div>
+              ) : (
+                top10.slice(0, LIST_COUNT).map((market, i) => (
+                  <TVMarketBlock
+                    key={market.id}
+                    market={market}
+                    rank={i + 1}
+                  />
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -315,14 +299,72 @@ export default function TVPage() {
   );
 }
 
+function TVMarketBlock({
+  market,
+  rank,
+}: {
+  market: RankedMarket;
+  rank: number;
+}) {
+  const yesPercent = Math.round(market.probability * 100);
+  const noPercent = 100 - yesPercent;
+
+  return (
+    <Link
+      href={`/markets/${market.id}`}
+      className="flex-1 min-h-0 flex min-w-0 overflow-hidden"
+    >
+      <div className="bg-card border border-border rounded px-2 py-1 hover:border-border/80 hover:bg-card-hover transition-all flex items-center justify-between gap-2 w-full min-h-0 flex-1 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] font-bold text-border tabular-nums shrink-0 w-3">
+              {rank}
+            </span>
+            <h2 className="text-foreground font-medium text-[10px] leading-tight truncate min-w-0">
+              {market.question}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5 text-[9px] text-muted">
+            <span className="text-accent font-medium truncate">
+              {formatLeaves(market.volume)} vol
+            </span>
+            <span className="truncate">
+              {formatShares(market.recentShares)} shares (10m)
+            </span>
+          </div>
+          <div className="flex h-0.5 rounded-full overflow-hidden bg-border/30 gap-px mt-0.5">
+            <div
+              className="bg-yes/80 rounded-l-full transition-all duration-300"
+              style={{ width: `${yesPercent}%` }}
+            />
+            <div
+              className="bg-no/80 rounded-r-full transition-all duration-300"
+              style={{ width: `${noPercent}%` }}
+            />
+          </div>
+        </div>
+        <div
+          className={`text-sm font-bold tabular-nums leading-tight shrink-0 ${
+            market.probability >= 0.5 ? "text-yes" : "text-no"
+          }`}
+        >
+          {yesPercent}%
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function FeaturedChart({
   marketId,
   data,
   currentProb,
+  height = 200,
 }: {
   marketId: string;
   data: ProbPoint[];
   currentProb: number;
+  height?: number | "100%";
 }) {
   const gradId = `tvProbGrad-${marketId}`;
   if (!data || data.length === 0) {
@@ -334,7 +376,7 @@ function FeaturedChart({
       { time: Date.now(), probability: Math.round(currentProb * 100) },
     ];
     return (
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={height}>
         <AreaChart data={single}>
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -389,7 +431,7 @@ function FeaturedChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={chartData}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">

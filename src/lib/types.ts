@@ -23,6 +23,7 @@ export interface Market {
   resolution: string | null;
   resolved_at: string | null;
   created_at: string;
+  is_featured?: boolean;
 }
 
 export interface Trade {
