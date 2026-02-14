@@ -19,22 +19,22 @@ export default async function MarketsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-6">Markets</h1>
+      <h1 className="text-xl font-bold mb-6 border-b border-border pb-4">Markets</h1>
 
       {(!activeMarkets || activeMarkets.length === 0) && (
-        <p className="text-muted text-sm">No active markets yet.</p>
+        <p className="text-muted text-sm py-4">No active markets yet.</p>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {activeMarkets?.map((market) => (
           <MarketCard key={market.id} market={market} />
         ))}
       </div>
 
       {resolvedMarkets && resolvedMarkets.length > 0 && (
-        <div className="mt-10">
-          <h2 className="text-lg font-bold mb-4 text-muted">Resolved</h2>
-          <div className="space-y-3 opacity-70">
+        <div className="mt-12 border-t border-border pt-8">
+          <h2 className="text-lg font-bold mb-4 text-muted border-b border-border pb-3">Resolved</h2>
+          <div className="space-y-2 opacity-70">
             {resolvedMarkets.map((market) => (
               <MarketCard key={market.id} market={market} />
             ))}
