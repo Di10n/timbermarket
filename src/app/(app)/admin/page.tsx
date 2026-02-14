@@ -20,16 +20,30 @@ export default async function AdminPage() {
 
   if (!profile?.is_admin) redirect("/markets");
 
-  const { data: markets } = await supabase
-    .from("markets")
-    .select("*")
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
+  const [{ data: markets }, { data: featured }] = await Promise.all([
+    supabase
+      .from("markets")
+      .select("*")
+      .eq("status", "active")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("markets")
+      .select("id")
+      .eq("is_featured", true)
+      .eq("status", "active")
+      .maybeSingle(),
+  ]);
+
+  const featuredMarketId =
+    (featured as { id: string } | null)?.id ?? null;
 
   return (
     <div>
       <h1 className="text-xl font-bold mb-6">Admin</h1>
-      <AdminPanel activeMarkets={(markets ?? []) as Market[]} />
+      <AdminPanel
+        activeMarkets={(markets ?? []) as Market[]}
+        featuredMarketId={featuredMarketId}
+      />
     </div>
   );
 }

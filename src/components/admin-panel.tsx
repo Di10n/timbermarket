@@ -1,19 +1,118 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { formatProbability } from "@/lib/utils";
 import type { Market } from "@/lib/types";
 
 interface AdminPanelProps {
   activeMarkets: Market[];
+  featuredMarketId: string | null;
 }
 
-export default function AdminPanel({ activeMarkets }: AdminPanelProps) {
+export default function AdminPanel({
+  activeMarkets,
+  featuredMarketId,
+}: AdminPanelProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <CreateMarketForm />
-      <ResolveMarketForm markets={activeMarkets} />
+    <div className="space-y-6">
+      <FeaturedMarketForm
+        markets={activeMarkets}
+        featuredMarketId={featuredMarketId}
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CreateMarketForm />
+        <ResolveMarketForm markets={activeMarkets} />
+      </div>
+    </div>
+  );
+}
+
+function FeaturedMarketForm({
+  markets,
+  featuredMarketId,
+}: {
+  markets: Market[];
+  featuredMarketId: string | null;
+}) {
+  const [selectedMarket, setSelectedMarket] = useState(featuredMarketId ?? "");
+  useEffect(() => {
+    setSelectedMarket(featuredMarketId ?? "");
+  }, [featuredMarketId]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const router = useRouter();
+
+  async function handleSetFeatured(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage("");
+    if (!selectedMarket) {
+      setMessage("Select a market");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/set-featured-market", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marketId: selectedMarket }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.error || "Failed to set featured market");
+        setLoading(false);
+        return;
+      }
+      setMessage("Featured market updated.");
+      router.refresh();
+    } catch {
+      setMessage("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4">
+      <h2 className="text-lg font-bold mb-4">Featured Market (TV page)</h2>
+      {markets.length === 0 ? (
+        <p className="text-muted text-sm">No active markets. Create one first.</p>
+      ) : (
+        <form onSubmit={handleSetFeatured} className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm text-muted mb-1">Market to feature</label>
+            <select
+              value={selectedMarket}
+              onChange={(e) => setSelectedMarket(e.target.value)}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
+            >
+              <option value="">Select a market...</option>
+              {markets.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.question} ({formatProbability(m.probability)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            disabled={loading || !selectedMarket}
+            className="py-2 px-4 bg-accent hover:bg-accent-hover text-background font-medium rounded-lg transition-colors disabled:opacity-50"
+          >
+            {loading ? "Saving..." : "Set as featured"}
+          </button>
+          {featuredMarketId && (
+            <span className="text-xs text-muted">
+              Current: {markets.find((m) => m.id === featuredMarketId)?.question ?? "—"}
+            </span>
+          )}
+          {message && (
+            <p className={`text-sm w-full ${message.includes("updated") ? "text-yes" : "text-no"}`}>
+              {message}
+            </p>
+          )}
+        </form>
+      )}
     </div>
   );
 }
