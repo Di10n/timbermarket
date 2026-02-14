@@ -29,18 +29,19 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
           {trades.slice(0, 12).map((trade) => {
             const user = trade.profiles?.username ?? "Someone";
             const question = trade.markets?.question ?? "a market";
-            const text =
-              trade.type === "BUY"
-                ? `${user} bought ${trade.outcome} on ${question}`
-                : `${user} sold ${trade.outcome} on ${question}`;
+            const action = trade.type === "BUY" ? "bought" : "sold";
             return (
               <Link
                 key={trade.id}
                 href={`/markets/${trade.market_id}`}
-                className="block text-sm py-1.5 border-b border-border/50 last:border-0 text-foreground hover:text-accent transition-colors min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-                title={text}
+                className="block text-sm py-1.5 border-b border-border/50 last:border-0 hover:text-accent transition-colors min-w-0 overflow-hidden text-ellipsis"
+                title={`${user} ${action} ${trade.outcome} on ${question}`}
               >
-                {text}
+                <span className="text-foreground">{user} {action} </span>
+                <span className={trade.outcome === "YES" ? "text-yes font-semibold" : "text-no font-semibold"}>
+                  {trade.outcome}
+                </span>
+                <span className="text-foreground"> on {question}</span>
               </Link>
             );
           })}

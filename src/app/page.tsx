@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import HomeTopBar from "@/components/home-top-bar";
 import HomeCarousel from "@/components/home-carousel";
 import Leaderboard from "@/components/leaderboard";
@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const supabase = await createClient();
+  const serviceClient = await createServiceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -52,9 +53,9 @@ export default async function Home() {
         .from("profiles")
         .select("id, username, balance")
         .eq("is_approved", true),
-      supabase
+      serviceClient
         .from("positions")
-        .select(`user_id, yes_shares, no_shares, markets(probability)`)
+        .select("user_id, yes_shares, no_shares, markets(probability)")
         .or("yes_shares.gt.0,no_shares.gt.0"),
       user
         ? supabase

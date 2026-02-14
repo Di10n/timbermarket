@@ -22,6 +22,16 @@ export default function Leaderboard({ leaders }: LeaderboardProps) {
       <Link href="/leaderboard" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">
         Leaderboard
       </Link>
+
+      {/* Column headers */}
+      <div className="flex items-center justify-between text-xs text-muted px-2 pb-2 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <span className="w-5 shrink-0">#</span>
+          <span>User</span>
+        </div>
+        <span>Total Value</span>
+      </div>
+
       <div>
         {leaders.slice(0, 5).map((user, i) => (
           <div
