@@ -44,6 +44,12 @@ export default async function Navbar() {
             >
               Leaderboard
             </Link>
+            <Link
+              href="/trades"
+              className="text-muted hover:text-foreground transition-colors"
+            >
+              Trades
+            </Link>
             {profile?.is_admin && (
               <Link
                 href="/admin"
