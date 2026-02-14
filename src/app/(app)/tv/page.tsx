@@ -6,10 +6,12 @@ import type { Market, Trade } from "@/lib/types";
 import {
   formatProbability,
   formatLeaves,
+  formatShares,
   timeAgo,
 } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
+import LeafIcon from "@/components/leaf-icon";
 import {
   AreaChart,
   Area,
@@ -599,22 +601,27 @@ function TVTradeRow({ trade }: { trade: TradeWithContext }) {
             {trade.profiles?.username ?? "User"}
           </span>
           <span className="text-muted">
-            {trade.type === "BUY" ? "bought" : "sold"}
+            {trade.type === "BUY" ? "bought" : trade.type === "REDEEM" ? "redeemed" : "sold"}
           </span>
-          <span
-            className={`font-semibold ${
-              trade.outcome === "YES" ? "text-yes" : "text-no"
-            }`}
-          >
-            {trade.outcome}
-          </span>
+          {trade.type === "REDEEM" ? (
+            <span className="font-semibold text-accent">pairs</span>
+          ) : (
+            <span
+              className={`font-semibold ${
+                trade.outcome === "YES" ? "text-yes" : "text-no"
+              }`}
+            >
+              {trade.outcome}
+            </span>
+          )}
         </div>
         <span className="text-xs text-muted shrink-0">
           {timeAgo(trade.created_at)}
         </span>
       </div>
       <div className="flex items-center gap-3 mt-1 text-xs text-muted">
-        <span>{formatLeaves(trade.amount)} vol</span>
+        <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
+        <span>{formatShares(trade.shares)} shares</span>
         <span>
           {formatProbability(trade.prob_before)} →{" "}
           {formatProbability(trade.prob_after)}

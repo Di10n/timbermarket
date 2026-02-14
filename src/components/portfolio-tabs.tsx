@@ -9,6 +9,7 @@ import {
   timeAgo,
 } from "@/lib/utils";
 import type { PositionWithMarket, TradeWithMarket } from "@/lib/types";
+import LeafIcon from "@/components/leaf-icon";
 
 interface PortfolioTabsProps {
   positions: PositionWithMarket[];
@@ -133,24 +134,30 @@ export default function PortfolioTabs({
                     className={`text-xs px-1.5 py-0.5 ${
                       trade.type === "BUY"
                         ? "bg-yes/10 text-yes"
+                        : trade.type === "REDEEM"
+                        ? "bg-accent/10 text-accent"
                         : "bg-no/10 text-no"
                     }`}
                   >
                     {trade.type}
                   </span>
-                  <span
-                    className={
-                      trade.outcome === "YES" ? "text-yes" : "text-no"
-                    }
-                  >
-                    {trade.outcome}
-                  </span>
+                  {trade.type === "REDEEM" ? (
+                    <span className="text-accent">pairs</span>
+                  ) : (
+                    <span
+                      className={
+                        trade.outcome === "YES" ? "text-yes" : "text-no"
+                      }
+                    >
+                      {trade.outcome}
+                    </span>
+                  )}
                   <span className="text-muted truncate max-w-xs">
                     {trade.markets.question}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted shrink-0">
-                  <span>{formatLeaves(trade.amount)} 🍃</span>
+                  <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
                   <span>{formatShares(trade.shares)} shares</span>
                   <span>
                     {formatProbability(trade.prob_before)} →{" "}

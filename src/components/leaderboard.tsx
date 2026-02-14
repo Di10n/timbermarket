@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatLeaves } from "@/lib/utils";
+import LeafIcon from "@/components/leaf-icon";
 
 interface LeaderboardProps {
   leaders: { username: string; portfolio_value: number }[];
@@ -49,7 +50,7 @@ export default function Leaderboard({ leaders }: LeaderboardProps) {
               </span>
             </div>
             <span className="text-accent font-medium shrink-0 ml-2">
-              {formatLeaves(user.portfolio_value)} 🍃
+              {formatLeaves(user.portfolio_value)} <LeafIcon />
             </span>
           </Link>
         ))}

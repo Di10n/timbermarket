@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { formatLeaves } from "@/lib/utils";
 import PortfolioTabs from "@/components/portfolio-tabs";
 import type { PositionWithMarket, TradeWithMarket } from "@/lib/types";
+import LeafIcon from "@/components/leaf-icon";
 
 export default async function ProfilePage({
   params,
@@ -69,19 +70,19 @@ export default async function ProfilePage({
           <div className="py-4 px-2">
             <p className="text-xs text-muted mb-1">Total Value</p>
             <p className="text-2xl font-bold text-accent">
-              {formatLeaves(totalValue)} <span className="text-sm font-normal text-muted">leaves</span>
+              {formatLeaves(totalValue)} <span className="text-sm font-normal text-muted"><LeafIcon /></span>
             </p>
           </div>
           <div className="py-4 px-4">
             <p className="text-xs text-muted mb-1">Balance</p>
             <p className="text-2xl font-bold text-foreground">
-              {formatLeaves(balance)} <span className="text-sm font-normal text-muted">leaves</span>
+              {formatLeaves(balance)} <span className="text-sm font-normal text-muted"><LeafIcon /></span>
             </p>
           </div>
           <div className="py-4 px-4">
             <p className="text-xs text-muted mb-1">In Positions</p>
             <p className="text-2xl font-bold text-foreground">
-              {formatLeaves(positionsValue)} <span className="text-sm font-normal text-muted">leaves</span>
+              {formatLeaves(positionsValue)} <span className="text-sm font-normal text-muted"><LeafIcon /></span>
             </p>
           </div>
         </div>

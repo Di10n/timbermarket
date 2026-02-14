@@ -4,6 +4,7 @@ import { formatLeaves } from "@/lib/utils";
 import ThemeToggle from "@/components/theme-toggle";
 import NavLink from "@/components/nav-link";
 import LogoutButton from "@/components/logout-button";
+import LeafIcon from "@/components/leaf-icon";
 
 interface HomeTopBarProps {
   user: { id: string } | null;
@@ -29,7 +30,6 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
           <div className="hidden lg:flex items-center gap-4 text-sm">
             <NavLink href="/portfolio">Portfolio</NavLink>
             <NavLink href="/leaderboard">Leaderboard</NavLink>
-            <NavLink href="/trades">Trades</NavLink>
             {profile?.is_admin && <NavLink href="/admin">Admin</NavLink>}
           </div>
 
@@ -44,7 +44,6 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
               <nav className="absolute right-0 top-14 bg-card border border-border rounded-lg shadow-lg min-w-[180px] z-50 overflow-hidden">
                 <NavLink href="/portfolio" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Portfolio</NavLink>
                 <NavLink href="/leaderboard" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Leaderboard</NavLink>
-                <NavLink href="/trades" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Trades</NavLink>
                 {profile?.is_admin && <NavLink href="/admin" className="block px-4 py-3 hover:bg-card-hover">Admin</NavLink>}
               </nav>
             </details>
@@ -63,7 +62,7 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
                   {profile.username}
                 </Link>
                 <span className="text-accent font-medium">
-                  {formatLeaves(profile.balance)} 🍃
+                  {formatLeaves(profile.balance)} <LeafIcon />
                 </span>
               </div>
               <LogoutButton />

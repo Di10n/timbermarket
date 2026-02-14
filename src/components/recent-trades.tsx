@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatLeaves, formatShares, formatProbability, timeAgo } from "@/lib/utils";
 import type { Trade } from "@/lib/types";
+import LeafIcon from "@/components/leaf-icon";
 
 interface RecentTradesProps {
   trades: (Trade & {
@@ -16,7 +17,7 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
     if (compact) {
       return (
         <div className="border-b border-border py-4">
-          <Link href="/trades" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">Recent Trades</Link>
+          <span className="text-sm font-medium text-foreground mb-3 inline-block">Recent Trades</span>
           <p className="text-sm text-muted">No trades yet.</p>
         </div>
       );
@@ -32,12 +33,12 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
   if (compact) {
     return (
       <div className="border-b border-border py-4">
-        <Link href="/trades" className="text-sm font-medium text-foreground hover:text-accent transition-colors mb-3 inline-block">Recent Trades</Link>
+        <span className="text-sm font-medium text-foreground mb-3 inline-block">Recent Trades</span>
         <div className="space-y-2">
           {trades.slice(0, 12).map((trade) => {
             const user = trade.profiles?.username ?? "Someone";
             const question = trade.markets?.question ?? "a market";
-            const action = trade.type === "BUY" ? "bought" : "sold";
+            const action = trade.type === "BUY" ? "bought" : trade.type === "REDEEM" ? "redeemed" : "sold";
             return (
               <div
                 key={trade.id}
@@ -50,9 +51,13 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
                   {user}
                 </Link>
                 <span className="text-foreground"> {action} </span>
-                <span className={trade.outcome === "YES" ? "text-yes font-semibold" : "text-no font-semibold"}>
-                  {trade.outcome}
-                </span>
+                {trade.type === "REDEEM" ? (
+                  <span className="text-accent font-semibold">pairs</span>
+                ) : (
+                  <span className={trade.outcome === "YES" ? "text-yes font-semibold" : "text-no font-semibold"}>
+                    {trade.outcome}
+                  </span>
+                )}
                 <span className="text-foreground"> on </span>
                 <Link
                   href={`/markets/${trade.market_id}`}
@@ -86,21 +91,25 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
               </Link>
               <span
                 className={`font-medium ${
-                  trade.type === "BUY" ? "text-foreground" : "text-muted"
+                  trade.type === "BUY" ? "text-foreground" : trade.type === "REDEEM" ? "text-accent" : "text-muted"
                 }`}
               >
-                {trade.type === "BUY" ? "bought" : "sold"}
+                {trade.type === "BUY" ? "bought" : trade.type === "REDEEM" ? "redeemed" : "sold"}
               </span>
-              <span
-                className={
-                  trade.outcome === "YES" ? "text-yes" : "text-no"
-                }
-              >
-                {trade.outcome}
-              </span>
+              {trade.type === "REDEEM" ? (
+                <span className="text-accent">pairs</span>
+              ) : (
+                <span
+                  className={
+                    trade.outcome === "YES" ? "text-yes" : "text-no"
+                  }
+                >
+                  {trade.outcome}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3 text-xs text-muted">
-              <span>{formatLeaves(trade.amount)} 🍃</span>
+              <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
               <span>{formatShares(trade.shares)} shares</span>
               <span>
                 {formatProbability(trade.prob_before)} →{" "}

@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
+  Tooltip,
 } from "recharts";
 
 export interface ProbabilityPoint {
@@ -48,6 +49,32 @@ export default function MarketCarouselCard({ market, history }: MarketCarouselCa
   const timeSpan = endTime - (rawData[0]?.time || Date.now());
   const isShortSpan = timeSpan < 24 * 60 * 60 * 1000;
 
+  // Interpolate points for smooth cursor movement (matches market page chart)
+  const chartData: { time: number; probability: number }[] = [];
+  const TARGET_POINTS = 200;
+  if (rawData.length >= 2) {
+    const totalSpan = rawData[rawData.length - 1].time - rawData[0].time;
+    const step = totalSpan / TARGET_POINTS;
+    for (let i = 0; i < rawData.length - 1; i++) {
+      const curr = rawData[i];
+      const next = rawData[i + 1];
+      chartData.push(curr);
+      if (step > 0) {
+        let t = curr.time + step;
+        while (t < next.time) {
+          chartData.push({ time: t, probability: curr.probability });
+          t += step;
+        }
+      }
+    }
+    chartData.push(rawData[rawData.length - 1]);
+  } else {
+    chartData.push(...rawData);
+  }
+
+  // Unique gradient ID per market to avoid SVG conflicts
+  const gradientId = `probGradient-carousel-${market.id}`;
+
   return (
     <Link href={`/markets/${market.id}`} className="block h-full w-full">
       <div className="bg-card border border-border rounded-lg p-6 hover:border-accent/30 hover:shadow-md transition-all h-full w-full flex flex-col">
@@ -74,9 +101,9 @@ export default function MarketCarouselCard({ market, history }: MarketCarouselCa
           {rawData.length > 0 ? (
             <div style={{ width: '100%', height: 'calc(100% - 30px)' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={rawData}>
+                <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="probGradient" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="var(--color-yes)" stopOpacity={0} />
                   </linearGradient>
@@ -114,11 +141,22 @@ export default function MarketCarouselCard({ market, history }: MarketCarouselCa
                   axisLine={false}
                   width={40}
                 />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "var(--color-card)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    color: "var(--color-foreground)",
+                  }}
+                  labelFormatter={(val) => new Date(val).toLocaleString()}
+                  formatter={(value) => [`${value}%`, "Probability"]}
+                />
                 <Area
                   type="stepAfter"
                   dataKey="probability"
                   stroke="var(--color-yes)"
-                  fill="url(#probGradient)"
+                  fill={`url(#${gradientId})`}
                   strokeWidth={2}
                 />
               </AreaChart>

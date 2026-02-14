@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { formatProbability } from "@/lib/utils";
 import type { Market } from "@/lib/types";
+import LeafIcon from "@/components/leaf-icon";
 
 interface AdminPanelProps {
   activeMarkets: Market[];
@@ -213,7 +214,7 @@ function CreateMarketForm() {
 
         <div>
           <label className="block text-sm text-muted mb-1">
-            Initial Liquidity (🍃)
+            Initial Liquidity (<LeafIcon />)
           </label>
           <input
             type="number"

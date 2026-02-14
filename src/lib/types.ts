@@ -30,7 +30,7 @@ export interface Trade {
   id: string;
   market_id: string;
   user_id: string;
-  type: "BUY" | "SELL";
+  type: "BUY" | "SELL" | "REDEEM";
   outcome: "YES" | "NO";
   amount: number;
   shares: number;
