@@ -103,14 +103,30 @@ export default async function Home() {
   const carouselMarkets = [...userTradedMarkets, ...volumeMarkets];
 
   const marketIds = topMarkets.map((m) => m.id);
-  const historyResult =
+
+  // Fetch probability history and comment counts in parallel
+  const [historyResult, commentCountsResult] = await Promise.all([
     marketIds.length > 0
-      ? await supabase
+      ? supabase
           .from("probability_history")
           .select("market_id, probability, created_at")
           .in("market_id", marketIds)
           .order("created_at", { ascending: true })
-      : { data: [] };
+      : { data: [] },
+    marketIds.length > 0
+      ? supabase
+          .from("comments")
+          .select("market_id")
+          .in("market_id", marketIds)
+      : { data: [] },
+  ]);
+
+  // Count comments per market
+  const commentCountMap = new Map<string, number>();
+  (commentCountsResult.data ?? []).forEach((comment: any) => {
+    const count = commentCountMap.get(comment.market_id) || 0;
+    commentCountMap.set(comment.market_id, count + 1);
+  });
 
   const historyRows = (historyResult.data ?? []) as {
     market_id: string;
@@ -153,7 +169,11 @@ export default async function Home() {
             <h2 className="text-2xl font-bold text-foreground mb-4 lg:mb-6">Markets</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {topMarkets.map((market) => (
-                <MarketCard key={market.id} market={market} />
+                <MarketCard
+                  key={market.id}
+                  market={market}
+                  commentCount={commentCountMap.get(market.id) || 0}
+                />
               ))}
             </div>
           </div>

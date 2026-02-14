@@ -73,8 +73,9 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
   return (
     <div className="bg-card border border-border rounded-lg p-4">
       <h3 className="text-sm text-muted mb-3">Probability</h3>
-      <ResponsiveContainer width="100%" height={280}>
-        <AreaChart data={chartData}>
+      <div style={{ width: '100%', height: '320px', minHeight: '320px', paddingBottom: '10px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -5, bottom: 15 }}>
           <defs>
             <linearGradient id="probGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="var(--color-yes)" stopOpacity={0.3} />
@@ -106,15 +107,18 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
             fontSize={11}
             tickLine={false}
             axisLine={false}
+            height={50}
           />
           <YAxis
             domain={[0, 100]}
+            ticks={[0, 25, 50, 75, 100]}
             tickFormatter={(val) => `${val}%`}
             stroke="var(--color-muted)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
-            width={40}
+            width={50}
+            padding={{ top: 0, bottom: 0 }}
           />
           <Tooltip
             contentStyle={{
@@ -128,7 +132,7 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
             formatter={(value) => [`${value}%`, "Probability"]}
           />
           <Area
-            type="stepAfter"
+            type="monotone"
             dataKey="probability"
             stroke="var(--color-yes)"
             fill="url(#probGradient)"
@@ -136,6 +140,7 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
           />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

@@ -75,9 +75,9 @@ export function LeaderboardEntry({
         <div className="shrink-0 text-right">
           <div className="font-bold text-foreground">{formatLeaves(portfolioValue)} <LeafIcon /></div>
           <div className="text-xs text-muted">
-            <span>Balance: {formatLeaves(balance)}</span>
+            <span>Bal: {formatLeaves(balance)}</span>
             {' · '}
-            <span>Positions: {formatLeaves(positionsValue)}</span>
+            <span>Pos: {formatLeaves(positionsValue)}</span>
           </div>
         </div>
 
