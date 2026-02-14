@@ -81,42 +81,42 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
         {trades.map((trade) => (
           <div
             key={trade.id}
-            className="flex items-center justify-between text-sm py-1.5 border-b border-border/50 last:border-0"
+            className="flex items-center justify-between text-xs py-2 border-b border-border/50 last:border-0 gap-1 min-w-0"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 min-w-0 shrink">
               <Link
                 href={`/profile/${trade.profiles?.username ?? "User"}`}
-                className="text-muted text-xs hover:text-accent transition-colors"
+                className="text-muted hover:text-accent transition-colors truncate"
               >
                 {trade.profiles?.username ?? "User"}
               </Link>
               <span
-                className={`font-medium ${
+                className={`font-medium whitespace-nowrap ${
                   trade.type === "BUY" ? "text-foreground" : trade.type === "REDEEM" ? "text-accent" : "text-muted"
                 }`}
               >
                 {trade.type === "BUY" ? "bought" : trade.type === "REDEEM" ? "redeemed" : "sold"}
               </span>
               {trade.type === "REDEEM" ? (
-                <span className="text-accent">pairs</span>
+                <span className="text-accent whitespace-nowrap">pairs</span>
               ) : (
                 <span
-                  className={
+                  className={`whitespace-nowrap ${
                     trade.outcome === "YES" ? "text-yes" : "text-no"
-                  }
+                  }`}
                 >
                   {trade.outcome}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted">
-              <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
-              <span>{formatShares(trade.shares)} shares</span>
-              <span>
+            <div className="flex items-center gap-1.5 md:gap-2 text-muted shrink-0">
+              <span className="whitespace-nowrap inline-flex items-center gap-0.5">{formatLeaves(trade.amount)} <LeafIcon /></span>
+              <span className="whitespace-nowrap hidden sm:inline">{formatShares(trade.shares)} shares</span>
+              <span className="whitespace-nowrap hidden md:inline">
                 {formatProbability(trade.prob_before)} →{" "}
                 {formatProbability(trade.prob_after)}
               </span>
-              <span>{timeAgo(trade.created_at)}</span>
+              <span className="whitespace-nowrap hidden lg:inline">{timeAgo(trade.created_at)}</span>
             </div>
           </div>
         ))}
