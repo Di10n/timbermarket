@@ -22,10 +22,16 @@ export default function Leaderboard({ leaders }: LeaderboardProps) {
       <Link href="/leaderboard" className="text-sm text-muted hover:text-foreground transition-colors mb-3 inline-block">
         Leaderboard
       </Link>
+
+      {/* Column headers */}
       <div className="flex items-center justify-between text-xs text-muted px-2 pb-2 border-b border-border/50">
-        <span>User</span>
+        <div className="flex items-center gap-2">
+          <span className="w-5 shrink-0">#</span>
+          <span>User</span>
+        </div>
         <span>Total Value</span>
       </div>
+
       <div className="space-y-1.5 mt-1.5">
         {leaders.map((user, i) => (
           <div
