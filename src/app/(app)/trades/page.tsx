@@ -122,9 +122,12 @@ export default async function TradesPage() {
 
                 {/* User */}
                 <div className="shrink-0 min-w-0">
-                  <span className="text-sm font-medium text-foreground truncate">
+                  <Link
+                    href={`/profile/${trade.user.username}`}
+                    className="text-sm font-medium text-foreground hover:text-accent transition-colors truncate block"
+                  >
                     {trade.user.username}
-                  </span>
+                  </Link>
                 </div>
 
                 {/* Market */}

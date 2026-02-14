@@ -31,30 +31,40 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  const publicRoutes = ["/login", "/signup", "/auth/callback", "/api/auth/resolve-username"];
-  const isPublicRoute = publicRoutes.some((r) => pathname.startsWith(r));
+  const publicRoutes = [
+    "/",
+    "/login",
+    "/signup",
+    "/auth/callback",
+    "/api/auth/resolve-username",
+    "/markets",
+    "/leaderboard",
+    "/trades",
+  ];
+  const isPublicRoute = publicRoutes.some((r) => pathname === r || pathname.startsWith(r + "/"));
 
-  // Redirect unauthenticated users to login
-  if (!user && !isPublicRoute) {
+  // Only portfolio and admin require authentication
+  const protectedRoutes = ["/portfolio", "/admin"];
+  const isProtectedRoute = protectedRoutes.some((r) => pathname.startsWith(r));
+
+  // Redirect unauthenticated users to login only for protected routes
+  if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth pages
-  if (user && isPublicRoute && !pathname.startsWith("/auth/callback")) {
+  // Redirect authenticated users away from auth pages (login/signup)
+  const authPages = ["/login", "/signup"];
+  const isAuthPage = authPages.some((r) => pathname.startsWith(r));
+  if (user && isAuthPage) {
     const url = request.nextUrl.clone();
-    url.pathname = "/markets";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
-  // Check approval for protected app routes
-  if (
-    user &&
-    (pathname.startsWith("/markets") ||
-      pathname.startsWith("/portfolio") ||
-      pathname.startsWith("/admin"))
-  ) {
+  // Check approval for authenticated users accessing protected routes
+  if (user && isProtectedRoute) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_approved")

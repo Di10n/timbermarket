@@ -53,7 +53,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/markets");
+    router.push("/");
     router.refresh();
   }
 

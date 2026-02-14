@@ -22,6 +22,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
   const scrollRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [index, setIndex] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(true);
   const count = marketsWithHistory?.length ?? 0;
 
   useEffect(() => {
@@ -36,6 +37,15 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
     slideRefs.current = slideRefs.current.slice(0, count);
   }, [count]);
 
+  // Auto-play carousel
+  useEffect(() => {
+    if (!autoPlay || count <= 1) return;
+    const interval = setInterval(() => {
+      setIndex((i) => (i >= count - 1 ? 0 : i + 1));
+    }, 5000); // Change slide every 5 seconds
+    return () => clearInterval(interval);
+  }, [autoPlay, count]);
+
   if (!marketsWithHistory || marketsWithHistory.length === 0) {
     return (
       <div className="border-b border-border py-8 text-center">
@@ -45,18 +55,26 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
   }
 
   function goPrev() {
+    setAutoPlay(false);
     setIndex((i) => (i <= 0 ? count - 1 : i - 1));
   }
 
   function goNext() {
+    setAutoPlay(false);
     setIndex((i) => (i >= count - 1 ? 0 : i + 1));
+  }
+
+  function goToSlide(i: number) {
+    setAutoPlay(false);
+    setIndex(i);
   }
 
   return (
     <div className="flex flex-col min-h-0 w-full">
       <div
         ref={scrollRef}
-        className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory min-h-0 min-w-0 w-full scrollbar-hide max-h-[180px]"
+        className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory min-h-0 min-w-0 w-full scrollbar-hide"
+        style={{ height: '500px', maxHeight: '500px' }}
       >
         {marketsWithHistory.map(({ market, history }, i) => (
           <div
@@ -89,7 +107,7 @@ export default function HomeCarousel({ marketsWithHistory }: HomeCarouselProps) 
             <button
               key={i}
               type="button"
-              onClick={() => setIndex(i)}
+              onClick={() => goToSlide(i)}
               aria-label={`Go to market ${i + 1}`}
               className={`w-2.5 h-2.5 rounded-full transition-colors ${
                 i === index

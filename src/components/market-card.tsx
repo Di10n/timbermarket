@@ -1,10 +1,26 @@
+"use client";
+
 import Link from "next/link";
 import { formatProbability, timeAgo, formatLeaves } from "@/lib/utils";
 import type { Market } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 export default function MarketCard({ market }: { market: Market }) {
   const prob = market.probability;
   const probPercent = Math.round(prob * 100);
+  const router = useRouter();
+
+  const handleYesClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/markets/${market.id}?outcome=YES`);
+  };
+
+  const handleNoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/markets/${market.id}?outcome=NO`);
+  };
 
   return (
     <Link href={`/markets/${market.id}`}>
@@ -45,33 +61,33 @@ export default function MarketCard({ market }: { market: Market }) {
 
         {/* YES/NO Buttons */}
         <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-yes/10 hover:bg-yes/20 border border-yes/30 rounded-xl py-4 text-center transition-colors">
-            <span className="text-yes font-semibold text-lg">Yes</span>
-          </div>
-          <div className="flex-1 bg-no/10 hover:bg-no/20 border border-no/30 rounded-xl py-4 text-center transition-colors">
-            <span className="text-no font-semibold text-lg">No</span>
-          </div>
+          <button
+            onClick={handleYesClick}
+            className="flex-1 bg-yes/10 hover:bg-yes/20 border border-yes/30 rounded-xl py-4 text-center transition-colors"
+          >
+            <span className="text-yes font-semibold text-lg">Buy Yes</span>
+          </button>
+          <button
+            onClick={handleNoClick}
+            className="flex-1 bg-no/10 hover:bg-no/20 border border-no/30 rounded-xl py-4 text-center transition-colors"
+          >
+            <span className="text-no font-semibold text-lg">Buy No</span>
+          </button>
         </div>
 
-        {/* Footer with volume and icons */}
-        <div className="flex items-center justify-between text-sm text-muted">
-          <div className="flex items-center gap-3">
-            <span className="font-medium">{formatLeaves(market.volume)} Vol.</span>
-            <span>•</span>
-            <span>{timeAgo(market.created_at)}</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {market.status === "resolved" && (
+        {/* Footer with volume */}
+        <div className="flex items-center gap-3 text-sm text-muted">
+          <span className="font-medium">{formatLeaves(market.volume)} Vol.</span>
+          <span>•</span>
+          <span>{timeAgo(market.created_at)}</span>
+          {market.status === "resolved" && (
+            <>
+              <span>•</span>
               <span className="px-2 py-1 bg-accent/10 text-accent rounded text-xs font-medium">
                 {market.resolution}
               </span>
-            )}
-            {/* Bookmark icon placeholder */}
-            <svg className="w-5 h-5 text-muted hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </Link>

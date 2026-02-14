@@ -31,18 +31,28 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
             const question = trade.markets?.question ?? "a market";
             const action = trade.type === "BUY" ? "bought" : "sold";
             return (
-              <Link
+              <div
                 key={trade.id}
-                href={`/markets/${trade.market_id}`}
-                className="block text-sm py-1.5 border-b border-border/50 last:border-0 hover:text-accent transition-colors min-w-0 overflow-hidden text-ellipsis"
-                title={`${user} ${action} ${trade.outcome} on ${question}`}
+                className="text-sm py-1.5 border-b border-border/50 last:border-0 min-w-0"
               >
-                <span className="text-foreground">{user} {action} </span>
+                <Link
+                  href={`/profile/${user}`}
+                  className="text-foreground hover:text-accent transition-colors"
+                >
+                  {user}
+                </Link>
+                <span className="text-foreground"> {action} </span>
                 <span className={trade.outcome === "YES" ? "text-yes font-semibold" : "text-no font-semibold"}>
                   {trade.outcome}
                 </span>
-                <span className="text-foreground"> on {question}</span>
-              </Link>
+                <span className="text-foreground"> on </span>
+                <Link
+                  href={`/markets/${trade.market_id}`}
+                  className="text-foreground hover:text-accent transition-colors"
+                >
+                  {question}
+                </Link>
+              </div>
             );
           })}
         </div>
@@ -60,9 +70,12 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
             className="flex items-center justify-between text-sm py-1.5 border-b border-border/50 last:border-0"
           >
             <div className="flex items-center gap-2">
-              <span className="text-muted text-xs">
+              <Link
+                href={`/profile/${trade.profiles?.username ?? "User"}`}
+                className="text-muted text-xs hover:text-accent transition-colors"
+              >
                 {trade.profiles?.username ?? "User"}
-              </span>
+              </Link>
               <span
                 className={`font-medium ${
                   trade.type === "BUY" ? "text-foreground" : "text-muted"

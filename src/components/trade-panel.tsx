@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   calculateBuyShares,
   getProbabilityAfterBuy,
@@ -22,12 +22,23 @@ export default function TradePanel({
   position,
   balance,
 }: TradePanelProps) {
+  const searchParams = useSearchParams();
+  const outcomeParam = searchParams.get("outcome");
+  const initialOutcome = (outcomeParam === "YES" || outcomeParam === "NO") ? outcomeParam : "YES";
+
   const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
-  const [outcome, setOutcome] = useState<"YES" | "NO">("YES");
+  const [outcome, setOutcome] = useState<"YES" | "NO">(initialOutcome);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  // Update outcome when URL parameter changes
+  useEffect(() => {
+    if (outcomeParam === "YES" || outcomeParam === "NO") {
+      setOutcome(outcomeParam);
+    }
+  }, [outcomeParam]);
 
   const numAmount = parseFloat(amount) || 0;
   const isActive = market.status === "active";

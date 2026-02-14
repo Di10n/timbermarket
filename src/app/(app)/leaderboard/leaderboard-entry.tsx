@@ -55,7 +55,13 @@ export function LeaderboardEntry({
         {/* Username */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-foreground font-medium truncate">{username}</span>
+            <Link
+              href={`/profile/${username}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-foreground font-medium truncate hover:text-accent transition-colors"
+            >
+              {username}
+            </Link>
             {isCurrentUser && (
               <span className="text-xs px-1.5 py-0.5 bg-accent/20 text-accent">
                 You

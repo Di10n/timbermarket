@@ -4,7 +4,7 @@ import HomeTopBar from "@/components/home-top-bar";
 import HomeCarousel from "@/components/home-carousel";
 import Leaderboard from "@/components/leaderboard";
 import RecentTrades from "@/components/recent-trades";
-import PaginatedMarketList from "@/components/paginated-market-list";
+import MarketCard from "@/components/market-card";
 import type { Market, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -85,7 +85,8 @@ export default async function Home() {
       }, 0);
       return { username: p.username, portfolio_value: p.balance + posValue };
     })
-    .sort((a, b) => b.portfolio_value - a.portfolio_value);
+    .sort((a, b) => b.portfolio_value - a.portfolio_value)
+    .slice(0, 5);
 
   // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
   const userMarketIds = new Set(
@@ -131,20 +132,34 @@ export default async function Home() {
     <div className="min-h-screen">
       <HomeTopBar user={user} profile={user ? profile : null} />
 
-      <main className="max-w-4xl mx-auto px-4 py-8 w-full">
-        <div className="flex gap-8 flex-col lg:flex-row">
-          {/* Left: carousel + markets ~70% */}
-          <div className="flex-[7] min-w-0">
+      <main className="max-w-6xl mx-auto px-4 py-8 flex-1 w-full min-h-0">
+        {/* Carousel and leaderboard side by side */}
+        <div className="flex gap-8 flex-col lg:flex-row mb-8">
+          {/* Left: Carousel */}
+          <div className="flex-1 min-w-0">
             <HomeCarousel marketsWithHistory={carouselWithHistory} />
+          </div>
 
-            <div className="mt-2">
-              <PaginatedMarketList markets={topMarkets} />
+          {/* Right: leaderboard */}
+          <div className="w-full lg:w-80">
+            <Leaderboard leaders={leaderList} />
+          </div>
+        </div>
+
+        {/* Markets grid and recent trades side by side */}
+        <div className="flex gap-8 flex-col lg:flex-row">
+          {/* Left: Markets grid */}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Markets</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {topMarkets.map((market) => (
+                <MarketCard key={market.id} market={market} />
+              ))}
             </div>
           </div>
 
-          {/* Right: leaderboard + recent trades ~30% */}
-          <div className="flex-[3] flex flex-col gap-2 lg:min-w-[200px]">
-            <Leaderboard leaders={leaderList} />
+          {/* Right: recent trades */}
+          <div className="w-full lg:w-80">
             <RecentTrades trades={recentTrades} compact />
           </div>
         </div>
