@@ -9,6 +9,7 @@ import {
   timeAgo,
 } from "@/lib/utils";
 import type { PositionWithMarket, TradeWithMarket } from "@/lib/types";
+import LeafIcon from "@/components/leaf-icon";
 
 interface PortfolioTabsProps {
   positions: PositionWithMarket[];
@@ -150,7 +151,7 @@ export default function PortfolioTabs({
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted shrink-0">
-                  <span>{formatLeaves(trade.amount)} 🍃</span>
+                  <span>{formatLeaves(trade.amount)} <LeafIcon /></span>
                   <span>{formatShares(trade.shares)} shares</span>
                   <span>
                     {formatProbability(trade.prob_before)} →{" "}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/amm";
 import { formatProbability, formatShares, formatLeaves } from "@/lib/utils";
 import type { Market, Position } from "@/lib/types";
+import LeafIcon from "@/components/leaf-icon";
 
 interface TradePanelProps {
   market: Market;
@@ -215,7 +216,7 @@ export default function TradePanel({
       {/* Amount input */}
       <div className="mb-4">
         <label className="block text-xs text-muted mb-1">
-          {mode === "BUY" ? "Amount (🍃)" : "Shares to sell"}
+          {mode === "BUY" ? <>Amount (<LeafIcon />)</> : "Shares to sell"}
         </label>
         <input
           type="number"
@@ -229,7 +230,7 @@ export default function TradePanel({
         />
         {mode === "BUY" && (
           <p className="text-xs text-muted mt-1">
-            Balance: {formatLeaves(balance)} 🍃
+            Balance: {formatLeaves(balance)} <LeafIcon />
           </p>
         )}
         {mode === "SELL" && position && (
@@ -251,7 +252,7 @@ export default function TradePanel({
               <div className="flex justify-between">
                 <span className="text-muted">Potential payout</span>
                 <span className="text-yes">
-                  {formatLeaves(previewPayout)} 🍃
+                  {formatLeaves(previewPayout)} <LeafIcon />
                 </span>
               </div>
               <div className="flex justify-between">
@@ -264,7 +265,7 @@ export default function TradePanel({
               <div className="flex justify-between">
                 <span className="text-muted">Payout</span>
                 <span className="text-yes">
-                  {formatLeaves(previewPayout)} 🍃
+                  {formatLeaves(previewPayout)} <LeafIcon />
                 </span>
               </div>
               <div className="flex justify-between">

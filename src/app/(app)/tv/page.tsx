@@ -10,6 +10,7 @@ import {
 } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
+import LeafIcon from "@/components/leaf-icon";
 import {
   AreaChart,
   Area,

@@ -1,6 +1,7 @@
 'use client';
 
 import { formatLeaves } from '@/lib/utils';
+import LeafIcon from '@/components/leaf-icon';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -72,7 +73,7 @@ export function LeaderboardEntry({
 
         {/* Portfolio breakdown */}
         <div className="shrink-0 text-right">
-          <div className="font-bold text-foreground">{formatLeaves(portfolioValue)} 🍃</div>
+          <div className="font-bold text-foreground">{formatLeaves(portfolioValue)} <LeafIcon /></div>
           <div className="text-xs text-muted">
             <span>Balance: {formatLeaves(balance)}</span>
             {' · '}
@@ -127,20 +128,20 @@ export function LeaderboardEntry({
                       {position.yes_shares > 0 && (
                         <span className="text-yes mr-3">
                           YES: {position.yes_shares.toFixed(2)} shares (
-                          {formatLeaves(yesValue)} 🍃)
+                          {formatLeaves(yesValue)} <LeafIcon />)
                         </span>
                       )}
                       {position.no_shares > 0 && (
                         <span className="text-no">
                           NO: {position.no_shares.toFixed(2)} shares (
-                          {formatLeaves(noValue)} 🍃)
+                          {formatLeaves(noValue)} <LeafIcon />)
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="text-sm font-medium text-foreground">
-                      {formatLeaves(totalValue)} 🍃
+                      {formatLeaves(totalValue)} <LeafIcon />
                     </div>
                     <div className="text-xs text-muted">
                       @{(position.market_probability * 100).toFixed(0)}%
