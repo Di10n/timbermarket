@@ -19,7 +19,10 @@ export default async function MarketsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-6 border-b border-border pb-4">Markets</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Markets</h1>
+        <p className="text-sm text-muted">Bet on your friends!</p>
+      </div>
 
       {(!activeMarkets || activeMarkets.length === 0) && (
         <p className="text-muted text-sm py-4">No active markets yet.</p>

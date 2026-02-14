@@ -4,8 +4,7 @@ import HomeTopBar from "@/components/home-top-bar";
 import HomeCarousel from "@/components/home-carousel";
 import Leaderboard from "@/components/leaderboard";
 import RecentTrades from "@/components/recent-trades";
-import ForestFooter from "@/components/forest-footer";
-import MarketCard from "@/components/market-card";
+import PaginatedMarketList from "@/components/paginated-market-list";
 import type { Market, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -120,25 +119,19 @@ export default async function Home() {
           <div className="flex-[7] min-w-0 flex flex-col min-h-0">
             <HomeCarousel marketsWithHistory={carouselWithHistory} />
 
-            <div className="mt-6">
-              <h2 className="text-lg font-semibold text-foreground mb-2">Markets</h2>
-              <div>
-                {topMarkets.map((market) => (
-                  <MarketCard key={market.id} market={market} />
-                ))}
-              </div>
+            <div className="mt-2">
+              <PaginatedMarketList markets={topMarkets} />
             </div>
           </div>
 
           {/* Right: leaderboard + recent trades ~30% */}
-          <div className="flex-[3] flex flex-col gap-6 lg:min-w-[200px]">
+          <div className="flex-[3] flex flex-col gap-2 lg:min-w-[200px]">
             <Leaderboard leaders={leaderList} />
             <RecentTrades trades={recentTrades} compact />
           </div>
         </div>
       </main>
 
-      <ForestFooter />
     </div>
   );
 }
