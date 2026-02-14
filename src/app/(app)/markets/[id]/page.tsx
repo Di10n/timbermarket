@@ -29,7 +29,7 @@ export default async function MarketPage({
   if (!market) notFound();
 
   // Fetch user's position, probability history, recent trades, comments, and profile in parallel
-  const [positionResult, historyResult, tradesResult, commentsResult, profileResult] =
+  const [positionResult, historyResult, tradesResult, commentsResult, profileResult, traderCountResult] =
     await Promise.all([
       user
         ? supabase
@@ -63,12 +63,18 @@ export default async function MarketPage({
             .eq("id", user.id)
             .single()
         : { data: null },
+      supabase
+        .from("positions")
+        .select("user_id")
+        .eq("market_id", id)
+        .or("yes_shares.gt.0,no_shares.gt.0"),
     ]);
 
   const typedMarket = market as Market;
   const position = positionResult.data as Position | null;
   const profileData = profileResult.data as { balance: number; is_admin: boolean } | null;
   const balance = profileData?.balance ?? 0;
+  const traderCount = traderCountResult.data?.length ?? 0;
 
   // Merge commenter positions into comments
   const commentsData = (commentsResult.data ?? []) as CommentWithProfile[];
@@ -106,6 +112,8 @@ export default async function MarketPage({
             )}
             <div className="flex items-center gap-3 text-sm text-muted">
               <span className="font-medium">{formatLeaves(typedMarket.volume)} Vol.</span>
+              <span>•</span>
+              <span>{traderCount} {traderCount === 1 ? "trader" : "traders"}</span>
               <span>•</span>
               <span>{timeAgo(typedMarket.created_at)}</span>
               <span>•</span>

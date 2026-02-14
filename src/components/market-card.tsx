@@ -7,9 +7,11 @@ import { useRouter } from "next/navigation";
 
 export default function MarketCard({
   market,
+  traderCount,
   commentCount = 0,
 }: {
   market: Market;
+  traderCount?: number;
   commentCount?: number;
 }) {
   const prob = market.probability;
@@ -84,6 +86,12 @@ export default function MarketCard({
         {/* Footer with volume, time, and comments */}
         <div className="flex items-center gap-3 text-sm text-muted">
           <span className="font-medium">{formatLeaves(market.volume)} Vol.</span>
+          {traderCount != null && (
+            <>
+              <span>•</span>
+              <span>{traderCount} {traderCount === 1 ? "trader" : "traders"}</span>
+            </>
+          )}
           <span>•</span>
           <span>{timeAgo(market.created_at)}</span>
           <span>•</span>
