@@ -1,8 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { formatLeaves } from "@/lib/utils";
 import LogoutButton from "./logout-button";
+import ThemeToggle from "./theme-toggle";
 import NavLink from "./nav-link";
 
 export default async function Navbar() {
@@ -20,13 +22,32 @@ export default async function Navbar() {
     .single();
 
   return (
-    <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+    <nav className="border-b border-border bg-background sticky top-0 z-50">
+      <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/markets" className="text-accent font-bold text-lg">
-            Timbermarket
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/timbermarket_logo.svg"
+              alt="TimberMarket"
+              width={36}
+              height={36}
+              className="shrink-0"
+            />
+            <span className="text-accent font-bold text-lg">TimberMarket</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
+            <Link
+              href="/markets"
+              className="text-muted hover:text-foreground transition-colors"
+            >
+              Markets
+            </Link>
+            <Link
+              href="/leaderboard"
+              className="text-muted hover:text-foreground transition-colors"
+            >
+              Leaderboard
+            </Link>
             <NavLink href="/markets">Markets</NavLink>
             <NavLink href="/portfolio">Portfolio</NavLink>
             {profile?.is_admin && (
@@ -35,11 +56,15 @@ export default async function Navbar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <div className="text-sm">
-            <span className="text-muted mr-1">
+            <Link
+              href="/portfolio"
+              className="text-foreground hover:text-accent transition-colors mr-1"
+            >
               {profile?.username}
-            </span>
+            </Link>
             <span className="text-accent font-medium">
               {formatLeaves(profile?.balance ?? 0)} leaves
             </span>
