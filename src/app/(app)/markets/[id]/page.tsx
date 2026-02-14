@@ -140,6 +140,7 @@ export default async function MarketPage({
             market={typedMarket}
             position={position}
             balance={balance}
+            isLoggedIn={!!user}
           />
         </div>
       </div>

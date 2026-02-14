@@ -60,7 +60,7 @@ export default async function PortfolioPage() {
 
       {/* Portfolio summary */}
       <div className="border-t border-border">
-        <div className="grid grid-cols-3 divide-x divide-border">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
           <div className="py-4 px-2">
             <p className="text-xs text-muted mb-1">Total Value</p>
             <p className="text-2xl font-bold text-accent">

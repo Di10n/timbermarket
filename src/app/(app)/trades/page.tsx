@@ -92,86 +92,142 @@ export default async function TradesPage() {
             const isProbUp = probChange > 0;
 
             return (
-              <div
-                key={trade.id}
-                className="flex items-center gap-4 py-3 px-2 border-b border-border hover:bg-card-hover/30 transition-colors"
-              >
-                {/* Trade Type Badge */}
-                <div className="shrink-0">
-                  <span
-                    className={`text-xs px-1.5 py-0.5 ${
-                      trade.type === 'BUY'
-                        ? 'bg-yes/10 text-yes'
-                        : 'bg-no/10 text-no'
-                    }`}
-                  >
-                    {trade.type}
-                  </span>
+              <div key={trade.id}>
+                {/* Desktop Layout */}
+                <div className="hidden md:flex items-center gap-4 py-3 px-2 border-b border-border hover:bg-card-hover/30 transition-colors">
+                  {/* Trade Type Badge */}
+                  <div className="shrink-0">
+                    <span
+                      className={`text-xs px-1.5 py-0.5 ${
+                        trade.type === 'BUY'
+                          ? 'bg-yes/10 text-yes'
+                          : 'bg-no/10 text-no'
+                      }`}
+                    >
+                      {trade.type}
+                    </span>
+                  </div>
+
+                  {/* Outcome Badge */}
+                  <div className="shrink-0">
+                    <span
+                      className={
+                        trade.outcome === 'YES' ? 'text-yes text-sm' : 'text-no text-sm'
+                      }
+                    >
+                      {trade.outcome}
+                    </span>
+                  </div>
+
+                  {/* User */}
+                  <div className="shrink-0 min-w-0">
+                    <Link
+                      href={`/profile/${trade.user.username}`}
+                      className="text-sm font-medium text-foreground hover:text-accent transition-colors truncate block"
+                    >
+                      {trade.user.username}
+                    </Link>
+                  </div>
+
+                  {/* Market */}
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/markets/${trade.market.id}`}
+                      className="text-sm text-muted hover:text-foreground transition-colors truncate block"
+                    >
+                      {trade.market.question}
+                    </Link>
+                  </div>
+
+                  {/* Amount & Shares */}
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-medium text-foreground">
+                      {formatLeaves(trade.amount)} 🍃
+                    </div>
+                    <div className="text-xs text-muted">
+                      {trade.shares.toFixed(2)} shares
+                    </div>
+                  </div>
+
+                  {/* Probability Change */}
+                  <div className="shrink-0 text-right min-w-[80px]">
+                    <div className="text-sm font-mono text-foreground">
+                      {(trade.prob_before * 100).toFixed(1)}%{' '}
+                      <span className="text-muted">→</span>{' '}
+                      {(trade.prob_after * 100).toFixed(1)}%
+                    </div>
+                    <div
+                      className={`text-xs font-medium ${
+                        isProbUp ? 'text-yes' : 'text-no'
+                      }`}
+                    >
+                      {isProbUp ? '↑' : '↓'}{' '}
+                      {Math.abs(probChange * 100).toFixed(1)}%
+                    </div>
+                  </div>
+
+                  {/* Time */}
+                  <div className="shrink-0 text-right min-w-[60px]">
+                    <span className="text-xs text-muted">
+                      {timeAgo(trade.created_at)}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Outcome Badge */}
-                <div className="shrink-0">
-                  <span
-                    className={
-                      trade.outcome === 'YES' ? 'text-yes text-sm' : 'text-no text-sm'
-                    }
-                  >
-                    {trade.outcome}
-                  </span>
-                </div>
+                {/* Mobile Layout */}
+                <div className="md:hidden py-3 px-3 border-b border-border hover:bg-card-hover/30 transition-colors">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs px-1.5 py-0.5 ${
+                          trade.type === 'BUY'
+                            ? 'bg-yes/10 text-yes'
+                            : 'bg-no/10 text-no'
+                        }`}
+                      >
+                        {trade.type}
+                      </span>
+                      <span
+                        className={
+                          trade.outcome === 'YES' ? 'text-yes text-sm font-medium' : 'text-no text-sm font-medium'
+                        }
+                      >
+                        {trade.outcome}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted">
+                      {timeAgo(trade.created_at)}
+                    </span>
+                  </div>
 
-                {/* User */}
-                <div className="shrink-0 min-w-0">
-                  <Link
-                    href={`/profile/${trade.user.username}`}
-                    className="text-sm font-medium text-foreground hover:text-accent transition-colors truncate block"
-                  >
-                    {trade.user.username}
-                  </Link>
-                </div>
-
-                {/* Market */}
-                <div className="flex-1 min-w-0">
                   <Link
                     href={`/markets/${trade.market.id}`}
-                    className="text-sm text-muted hover:text-foreground transition-colors truncate block"
+                    className="text-sm text-foreground hover:text-accent transition-colors block mb-2"
                   >
                     {trade.market.question}
                   </Link>
-                </div>
 
-                {/* Amount & Shares */}
-                <div className="shrink-0 text-right">
-                  <div className="text-sm font-medium text-foreground">
-                    {formatLeaves(trade.amount)}
+                  <div className="flex items-center justify-between text-xs">
+                    <Link
+                      href={`/profile/${trade.user.username}`}
+                      className="text-muted hover:text-foreground transition-colors"
+                    >
+                      @{trade.user.username}
+                    </Link>
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-foreground">
+                        {formatLeaves(trade.amount)} 🍃
+                      </span>
+                      <span
+                        className={`font-medium ${
+                          isProbUp ? 'text-yes' : 'text-no'
+                        }`}
+                      >
+                        {isProbUp ? '↑' : '↓'}{' '}
+                        {Math.abs(probChange * 100).toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted">
-                    {trade.shares.toFixed(2)} shares
-                  </div>
-                </div>
-
-                {/* Probability Change */}
-                <div className="shrink-0 text-right min-w-[80px]">
-                  <div className="text-sm font-mono text-foreground">
-                    {(trade.prob_before * 100).toFixed(1)}%{' '}
-                    <span className="text-muted">→</span>{' '}
-                    {(trade.prob_after * 100).toFixed(1)}%
-                  </div>
-                  <div
-                    className={`text-xs font-medium ${
-                      isProbUp ? 'text-yes' : 'text-no'
-                    }`}
-                  >
-                    {isProbUp ? '↑' : '↓'}{' '}
-                    {Math.abs(probChange * 100).toFixed(1)}%
-                  </div>
-                </div>
-
-                {/* Time */}
-                <div className="shrink-0 text-right min-w-[60px]">
-                  <span className="text-xs text-muted">
-                    {timeAgo(trade.created_at)}
-                  </span>
                 </div>
               </div>
             );

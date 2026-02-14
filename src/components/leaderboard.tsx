@@ -49,7 +49,7 @@ export default function Leaderboard({ leaders }: LeaderboardProps) {
               </span>
             </div>
             <span className="text-accent font-medium shrink-0 ml-2">
-              {formatLeaves(user.portfolio_value)}
+              {formatLeaves(user.portfolio_value)} 🍃
             </span>
           </Link>
         ))}

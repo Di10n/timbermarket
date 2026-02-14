@@ -15,12 +15,14 @@ interface TradePanelProps {
   market: Market;
   position: Position | null;
   balance: number;
+  isLoggedIn?: boolean;
 }
 
 export default function TradePanel({
   market,
   position,
   balance,
+  isLoggedIn = true,
 }: TradePanelProps) {
   const searchParams = useSearchParams();
   const outcomeParam = searchParams.get("outcome");
@@ -92,6 +94,12 @@ export default function TradePanel({
   }
 
   async function handleTrade() {
+    // Redirect to login if not logged in
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+
     if (!numAmount || numAmount <= 0) return;
     setError("");
     setLoading(true);
@@ -125,6 +133,11 @@ export default function TradePanel({
       const data = await res.json();
 
       if (!res.ok) {
+        // Redirect to login if unauthorized
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
         setError(data.error || "Trade failed");
         setLoading(false);
         return;

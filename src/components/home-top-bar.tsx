@@ -25,11 +25,29 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
             />
             <span className="text-accent font-bold text-lg font-[family-name:var(--font-gaegu)]">TimberMarket</span>
           </Link>
-          <div className="flex items-center gap-4 text-sm">
+          {/* Desktop nav - hide on mobile */}
+          <div className="hidden lg:flex items-center gap-4 text-sm">
             <NavLink href="/portfolio">Portfolio</NavLink>
             <NavLink href="/leaderboard">Leaderboard</NavLink>
             <NavLink href="/trades">Trades</NavLink>
             {profile?.is_admin && <NavLink href="/admin">Admin</NavLink>}
+          </div>
+
+          {/* Mobile nav - show only on mobile */}
+          <div className="lg:hidden">
+            <details className="relative">
+              <summary className="list-none cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center border border-border rounded hover:bg-card-hover">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 12h18M3 6h18M3 18h18" />
+                </svg>
+              </summary>
+              <nav className="absolute right-0 top-14 bg-card border border-border rounded-lg shadow-lg min-w-[180px] z-50 overflow-hidden">
+                <NavLink href="/portfolio" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Portfolio</NavLink>
+                <NavLink href="/leaderboard" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Leaderboard</NavLink>
+                <NavLink href="/trades" className="block px-4 py-3 hover:bg-card-hover border-b border-border">Trades</NavLink>
+                {profile?.is_admin && <NavLink href="/admin" className="block px-4 py-3 hover:bg-card-hover">Admin</NavLink>}
+              </nav>
+            </details>
           </div>
         </div>
 

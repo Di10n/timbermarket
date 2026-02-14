@@ -72,11 +72,11 @@ export function LeaderboardEntry({
 
         {/* Portfolio breakdown */}
         <div className="shrink-0 text-right">
-          <div className="font-bold text-foreground">{formatLeaves(portfolioValue)}</div>
+          <div className="font-bold text-foreground">{formatLeaves(portfolioValue)} 🍃</div>
           <div className="text-xs text-muted">
-            <span>Bal: {formatLeaves(balance)}</span>
+            <span>Balance: {formatLeaves(balance)}</span>
             {' · '}
-            <span>Pos: {formatLeaves(positionsValue)}</span>
+            <span>Positions: {formatLeaves(positionsValue)}</span>
           </div>
         </div>
 
@@ -129,20 +129,20 @@ export function LeaderboardEntry({
                       {position.yes_shares > 0 && (
                         <span className="text-yes mr-3">
                           YES: {position.yes_shares.toFixed(2)} shares (
-                          {formatLeaves(yesValue)})
+                          {formatLeaves(yesValue)} 🍃)
                         </span>
                       )}
                       {position.no_shares > 0 && (
                         <span className="text-no">
                           NO: {position.no_shares.toFixed(2)} shares (
-                          {formatLeaves(noValue)})
+                          {formatLeaves(noValue)} 🍃)
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="text-sm font-medium text-foreground">
-                      {formatLeaves(totalValue)}
+                      {formatLeaves(totalValue)} 🍃
                     </div>
                     <div className="text-xs text-muted">
                       @{(position.market_probability * 100).toFixed(0)}%

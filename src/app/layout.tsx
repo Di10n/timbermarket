@@ -24,6 +24,10 @@ export const metadata: Metadata = {
   icons: {
     icon: "/timbermarket_logo.svg",
   },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+  },
 };
 
 export default function RootLayout({

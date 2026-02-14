@@ -132,9 +132,9 @@ export default async function Home() {
     <div className="min-h-screen">
       <HomeTopBar user={user} profile={user ? profile : null} />
 
-      <main className="max-w-6xl mx-auto px-4 py-8 flex-1 w-full min-h-0">
+      <main className="max-w-6xl mx-auto px-3 py-4 lg:px-4 lg:py-8 flex-1 w-full min-h-0">
         {/* Carousel and leaderboard side by side */}
-        <div className="flex gap-8 flex-col lg:flex-row mb-8">
+        <div className="flex gap-4 lg:gap-8 flex-col lg:flex-row mb-6 lg:mb-8">
           {/* Left: Carousel */}
           <div className="flex-1 min-w-0">
             <HomeCarousel marketsWithHistory={carouselWithHistory} />
@@ -147,10 +147,10 @@ export default async function Home() {
         </div>
 
         {/* Markets grid and recent trades side by side */}
-        <div className="flex gap-8 flex-col lg:flex-row">
+        <div className="flex gap-4 lg:gap-8 flex-col lg:flex-row">
           {/* Left: Markets grid */}
           <div className="flex-1 min-w-0">
-            <h2 className="text-2xl font-bold text-foreground mb-6">Markets</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4 lg:mb-6">Markets</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {topMarkets.map((market) => (
                 <MarketCard key={market.id} market={market} />

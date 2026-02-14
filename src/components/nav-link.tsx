@@ -6,9 +6,11 @@ import { usePathname } from "next/navigation";
 export default function NavLink({
   href,
   children,
+  className,
 }: {
   href: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   const pathname = usePathname();
   const isActive = pathname.startsWith(href);
@@ -20,7 +22,7 @@ export default function NavLink({
         isActive
           ? "text-foreground font-medium"
           : "text-muted hover:text-foreground"
-      }`}
+      } ${className || ""}`}
     >
       {children}
     </Link>
