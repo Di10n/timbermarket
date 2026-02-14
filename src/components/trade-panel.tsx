@@ -143,7 +143,7 @@ export default function TradePanel({
     position && (position.yes_shares > 0 || position.no_shares > 0);
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
+    <div className="bg-card border border-border rounded-lg p-4 h-full">
       {/* Mode toggle */}
       <div className="flex gap-1 mb-4 bg-background rounded-lg p-1">
         <button
