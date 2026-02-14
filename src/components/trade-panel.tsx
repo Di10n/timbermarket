@@ -1,0 +1,297 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  calculateBuyShares,
+  getProbabilityAfterBuy,
+  calculateSellPayout,
+  getProbabilityAfterSell,
+} from "@/lib/amm";
+import { formatProbability, formatShares, formatLeaves } from "@/lib/utils";
+import type { Market, Position } from "@/lib/types";
+
+interface TradePanelProps {
+  market: Market;
+  position: Position | null;
+  balance: number;
+}
+
+export default function TradePanel({
+  market,
+  position,
+  balance,
+}: TradePanelProps) {
+  const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
+  const [outcome, setOutcome] = useState<"YES" | "NO">("YES");
+  const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const numAmount = parseFloat(amount) || 0;
+  const isActive = market.status === "active";
+
+  // Calculate preview
+  let previewShares = 0;
+  let previewProb = market.probability;
+  let previewPayout = 0;
+
+  if (numAmount > 0 && isActive) {
+    if (mode === "BUY") {
+      previewShares = calculateBuyShares(
+        market.pool_yes,
+        market.pool_no,
+        market.p,
+        numAmount,
+        outcome
+      );
+      previewProb = getProbabilityAfterBuy(
+        market.pool_yes,
+        market.pool_no,
+        market.p,
+        numAmount,
+        outcome
+      );
+      previewPayout = previewShares; // Each share pays 1 leaf if wins
+    } else {
+      const maxShares =
+        outcome === "YES"
+          ? position?.yes_shares ?? 0
+          : position?.no_shares ?? 0;
+      const sharesToSell = Math.min(numAmount, maxShares);
+      if (sharesToSell > 0) {
+        previewPayout = calculateSellPayout(
+          market.pool_yes,
+          market.pool_no,
+          market.p,
+          sharesToSell,
+          outcome
+        );
+        previewProb = getProbabilityAfterSell(
+          market.pool_yes,
+          market.pool_no,
+          market.p,
+          sharesToSell,
+          outcome
+        );
+        previewShares = sharesToSell;
+      }
+    }
+  }
+
+  async function handleTrade() {
+    if (!numAmount || numAmount <= 0) return;
+    setError("");
+    setLoading(true);
+
+    try {
+      const body: Record<string, unknown> = {
+        marketId: market.id,
+        outcome,
+        type: mode,
+      };
+
+      if (mode === "BUY") {
+        body.amount = numAmount;
+      } else {
+        body.shares = numAmount;
+      }
+
+      const res = await fetch("/api/trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Trade failed");
+        setLoading(false);
+        return;
+      }
+
+      setAmount("");
+      router.refresh();
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const hasPosition =
+    position && (position.yes_shares > 0 || position.no_shares > 0);
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4">
+      {/* Mode toggle */}
+      <div className="flex gap-1 mb-4 bg-background rounded-lg p-1">
+        <button
+          onClick={() => {
+            setMode("BUY");
+            setAmount("");
+          }}
+          className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            mode === "BUY"
+              ? "bg-card text-foreground"
+              : "text-muted hover:text-foreground"
+          }`}
+        >
+          Buy
+        </button>
+        <button
+          onClick={() => {
+            setMode("SELL");
+            setAmount("");
+          }}
+          disabled={!hasPosition}
+          className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-30 ${
+            mode === "SELL"
+              ? "bg-card text-foreground"
+              : "text-muted hover:text-foreground"
+          }`}
+        >
+          Sell
+        </button>
+      </div>
+
+      {/* Outcome toggle */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setOutcome("YES")}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+            outcome === "YES"
+              ? "border-yes bg-yes/10 text-yes"
+              : "border-border text-muted hover:text-foreground"
+          }`}
+        >
+          Yes {formatProbability(market.probability)}
+        </button>
+        <button
+          onClick={() => setOutcome("NO")}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+            outcome === "NO"
+              ? "border-no bg-no/10 text-no"
+              : "border-border text-muted hover:text-foreground"
+          }`}
+        >
+          No {formatProbability(1 - market.probability)}
+        </button>
+      </div>
+
+      {/* Amount input */}
+      <div className="mb-4">
+        <label className="block text-xs text-muted mb-1">
+          {mode === "BUY" ? "Amount (leaves)" : "Shares to sell"}
+        </label>
+        <input
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+          min="0"
+          step="1"
+          disabled={!isActive}
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-lg focus:outline-none focus:border-accent disabled:opacity-50"
+        />
+        {mode === "BUY" && (
+          <p className="text-xs text-muted mt-1">
+            Balance: {formatLeaves(balance)} leaves
+          </p>
+        )}
+        {mode === "SELL" && position && (
+          <p className="text-xs text-muted mt-1">
+            Available: {formatShares(outcome === "YES" ? position.yes_shares : position.no_shares)} shares
+          </p>
+        )}
+      </div>
+
+      {/* Preview */}
+      {numAmount > 0 && isActive && (
+        <div className="mb-4 space-y-1.5 text-sm">
+          {mode === "BUY" ? (
+            <>
+              <div className="flex justify-between">
+                <span className="text-muted">Shares</span>
+                <span>{formatShares(previewShares)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Potential payout</span>
+                <span className="text-yes">
+                  {formatLeaves(previewPayout)} leaves
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">New probability</span>
+                <span>{formatProbability(previewProb)}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between">
+                <span className="text-muted">Payout</span>
+                <span className="text-yes">
+                  {formatLeaves(previewPayout)} leaves
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">New probability</span>
+                <span>{formatProbability(previewProb)}</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {error && <p className="text-no text-sm mb-3">{error}</p>}
+
+      <button
+        onClick={handleTrade}
+        disabled={
+          loading ||
+          !isActive ||
+          numAmount <= 0 ||
+          (mode === "BUY" && numAmount > balance)
+        }
+        className={`w-full py-2.5 font-medium rounded-lg transition-colors disabled:opacity-50 ${
+          outcome === "YES"
+            ? "bg-yes hover:bg-yes/90 text-background"
+            : "bg-no hover:bg-no/90 text-white"
+        }`}
+      >
+        {loading
+          ? "Processing..."
+          : !isActive
+            ? "Market closed"
+            : mode === "BUY"
+              ? `Buy ${outcome}`
+              : `Sell ${outcome}`}
+      </button>
+
+      {/* Current position */}
+      {hasPosition && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <p className="text-xs text-muted mb-2">Your position</p>
+          <div className="flex gap-4 text-sm">
+            {position!.yes_shares > 0 && (
+              <div>
+                <span className="text-yes">
+                  {formatShares(position!.yes_shares)} YES
+                </span>
+              </div>
+            )}
+            {position!.no_shares > 0 && (
+              <div>
+                <span className="text-no">
+                  {formatShares(position!.no_shares)} NO
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
