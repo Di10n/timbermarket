@@ -268,7 +268,7 @@ export default function TVPage() {
 
   return (
     <div className="fixed inset-0 bg-background z-[100] flex flex-col overflow-hidden p-3">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b-2 border-border shrink-0">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/timbermarket_logo.svg"
@@ -290,7 +290,7 @@ export default function TVPage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel: top = featured, bottom = top 5 by trading volume; no scroll */}
-        <div className="w-2/3 flex flex-col border-r border-border/50 min-h-0 overflow-hidden">
+        <div className="w-2/3 flex flex-col border-r-2 border-border min-h-0 overflow-hidden">
           {/* Top: featured market (admin-selected) */}
           <div className="flex-[0_0_40%] flex flex-col min-h-0 overflow-hidden">
             {featuredMarket ? (
@@ -317,7 +317,7 @@ export default function TVPage() {
                   </span>
                   <span>{formatLeaves(featuredMarket.volume)} total volume</span>
                 </div>
-                <div className="w-full max-h-[213px] rounded-lg overflow-hidden border border-border/50 shrink-0 p-2">
+                <div className="w-full max-h-[213px] rounded-lg overflow-hidden border-2 border-border shrink-0 p-2">
                   <FeaturedChart
                     marketId={featuredMarket.id}
                     data={historyByMarket[featuredMarket.id] ?? []}
@@ -356,7 +356,7 @@ export default function TVPage() {
 
         {/* Right panel: Recent trades */}
         <div className="w-1/3 flex flex-col overflow-hidden relative">
-          <div className="px-5 py-4 border-b border-border/50 shrink-0">
+          <div className="px-5 py-4 border-b-2 border-border shrink-0">
             <h2 className="text-lg font-semibold text-foreground">
               Recent Trades
             </h2>
@@ -367,7 +367,7 @@ export default function TVPage() {
                 <p className="text-muted text-sm">No trades yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/40">
+              <div className="divide-y-2 divide-border">
                 {trades.map((trade) => (
                   <TVTradeRow key={trade.id} trade={trade} />
                 ))}
