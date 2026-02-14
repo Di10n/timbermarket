@@ -63,7 +63,7 @@ export default function ProbabilitySparkline({ data, compact = false }: Probabil
                 minute: "2-digit",
               })
             }
-            formatter={(value: number) => [`${value}%`, "Probability"]}
+            formatter={(value) => [`${value}%`, "Probability"]}
             isAnimationActive={false}
           />
           <Area
