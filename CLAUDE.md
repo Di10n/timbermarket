@@ -1,5 +1,5 @@
 # Timbermarket - Prediction Market Platform
-
+ 
 ## Project Overview
 Timbermarket is a prediction market platform built for TreeHacks 2026 hackathon. Users buy and sell shares on yes/no questions using an Automated Market Maker (AMM) algorithm. The platform uses "leaves" as its currency.
 
