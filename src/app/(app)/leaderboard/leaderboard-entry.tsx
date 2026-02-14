@@ -69,10 +69,12 @@ export function LeaderboardEntry({
         </div>
 
         {/* Portfolio breakdown */}
-        <div className="flex-shrink-0 text-right">
-          <div className="font-bold text-lg">{formatLeaves(portfolioValue)}</div>
-          <div className="text-xs text-muted-foreground">
-            {formatLeaves(balance)} + {formatLeaves(positionsValue)}
+        <div className="flex-shrink-0 text-right space-y-1">
+          <div className="font-bold text-xl">{formatLeaves(portfolioValue)}</div>
+          <div className="text-xs text-muted-foreground space-x-1">
+            <span>Bal: {formatLeaves(balance)}</span>
+            <span className="text-muted-foreground/50">|</span>
+            <span>Pos: {formatLeaves(positionsValue)}</span>
           </div>
         </div>
 
