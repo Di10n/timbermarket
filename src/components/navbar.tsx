@@ -56,7 +56,7 @@ export default async function Navbar() {
               {profile?.username}
             </Link>
             <span className="text-accent font-medium">
-              {formatLeaves(profile?.balance ?? 0)} leaves
+              {formatLeaves(profile?.balance ?? 0)} 🍃
             </span>
           </div>
           <LogoutButton />

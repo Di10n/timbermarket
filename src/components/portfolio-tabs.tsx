@@ -150,7 +150,7 @@ export default function PortfolioTabs({
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted shrink-0">
-                  <span>{formatLeaves(trade.amount)} leaves</span>
+                  <span>{formatLeaves(trade.amount)} 🍃</span>
                   <span>{formatShares(trade.shares)} shares</span>
                   <span>
                     {formatProbability(trade.prob_before)} →{" "}

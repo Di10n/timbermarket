@@ -79,7 +79,7 @@ export default function RecentTrades({ trades, compact = false }: RecentTradesPr
               </span>
             </div>
             <div className="flex items-center gap-3 text-xs text-muted">
-              <span>{formatLeaves(trade.amount)} leaves</span>
+              <span>{formatLeaves(trade.amount)} 🍃</span>
               <span>{formatShares(trade.shares)} shares</span>
               <span>
                 {formatProbability(trade.prob_before)} →{" "}

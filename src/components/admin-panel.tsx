@@ -114,7 +114,7 @@ function CreateMarketForm() {
 
         <div>
           <label className="block text-sm text-muted mb-1">
-            Initial Liquidity (leaves)
+            Initial Liquidity (🍃)
           </label>
           <input
             type="number"

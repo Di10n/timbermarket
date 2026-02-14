@@ -64,19 +64,19 @@ export default async function PortfolioPage() {
           <div className="py-4 px-2">
             <p className="text-xs text-muted mb-1">Total Value</p>
             <p className="text-2xl font-bold text-accent">
-              {formatLeaves(totalValue)} <span className="text-sm font-normal text-muted">leaves</span>
+              {formatLeaves(totalValue)} <span className="text-sm font-normal text-muted">🍃</span>
             </p>
           </div>
           <div className="py-4 px-4">
             <p className="text-xs text-muted mb-1">Balance</p>
             <p className="text-2xl font-bold text-foreground">
-              {formatLeaves(balance)} <span className="text-sm font-normal text-muted">leaves</span>
+              {formatLeaves(balance)} <span className="text-sm font-normal text-muted">🍃</span>
             </p>
           </div>
           <div className="py-4 px-4">
             <p className="text-xs text-muted mb-1">In Positions</p>
             <p className="text-2xl font-bold text-foreground">
-              {formatLeaves(positionsValue)} <span className="text-sm font-normal text-muted">leaves</span>
+              {formatLeaves(positionsValue)} <span className="text-sm font-normal text-muted">🍃</span>
             </p>
           </div>
         </div>

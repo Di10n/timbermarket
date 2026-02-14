@@ -45,7 +45,7 @@ export default function HomeTopBar({ user, profile }: HomeTopBarProps) {
                   {profile.username}
                 </Link>
                 <span className="text-accent font-medium">
-                  {formatLeaves(profile.balance)} leaves
+                  {formatLeaves(profile.balance)} 🍃
                 </span>
               </div>
               <LogoutButton />

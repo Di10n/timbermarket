@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import TradePanel from "@/components/trade-panel";
 import ProbabilityChart from "@/components/probability-chart";
 import RecentTrades from "@/components/recent-trades";
+import MarketComments from "@/components/market-comments";
 import { formatProbability, timeAgo } from "@/lib/utils";
-import type { Market, Position, Trade } from "@/lib/types";
+import type { Market, Position, Trade, CommentWithProfile } from "@/lib/types";
 
 export default async function MarketPage({
   params,
@@ -27,8 +28,8 @@ export default async function MarketPage({
 
   if (!market) notFound();
 
-  // Fetch user's position, probability history, and recent trades in parallel
-  const [positionResult, historyResult, tradesResult, profileResult] =
+  // Fetch user's position, probability history, recent trades, comments, and profile in parallel
+  const [positionResult, historyResult, tradesResult, commentsResult, profileResult] =
     await Promise.all([
       user
         ? supabase
@@ -49,10 +50,16 @@ export default async function MarketPage({
         .eq("market_id", id)
         .order("created_at", { ascending: false })
         .limit(20),
+      supabase
+        .from("comments")
+        .select("*, profiles(username)")
+        .eq("market_id", id)
+        .order("created_at", { ascending: false })
+        .limit(50),
       user
         ? supabase
             .from("profiles")
-            .select("balance")
+            .select("balance, is_admin")
             .eq("id", user.id)
             .single()
         : { data: null },
@@ -60,7 +67,32 @@ export default async function MarketPage({
 
   const typedMarket = market as Market;
   const position = positionResult.data as Position | null;
-  const balance = (profileResult.data as { balance: number } | null)?.balance ?? 0;
+  const profileData = profileResult.data as { balance: number; is_admin: boolean } | null;
+  const balance = profileData?.balance ?? 0;
+
+  // Merge commenter positions into comments
+  const commentsData = (commentsResult.data ?? []) as CommentWithProfile[];
+  const commenterIds = [...new Set(commentsData.map((c) => c.user_id))];
+
+  let commentsWithPositions: CommentWithProfile[] = commentsData;
+  if (commenterIds.length > 0) {
+    const { data: commenterPositions } = await supabase
+      .from("positions")
+      .select("user_id, yes_shares, no_shares")
+      .eq("market_id", id)
+      .in("user_id", commenterIds);
+
+    if (commenterPositions) {
+      const posMap: Record<string, { yes_shares: number; no_shares: number }> = {};
+      for (const pos of commenterPositions) {
+        posMap[pos.user_id] = { yes_shares: pos.yes_shares, no_shares: pos.no_shares };
+      }
+      commentsWithPositions = commentsData.map((c) => ({
+        ...c,
+        positions: posMap[c.user_id] ?? null,
+      }));
+    }
+  }
 
   return (
     <div>
@@ -102,6 +134,12 @@ export default async function MarketPage({
           <ProbabilityChart data={historyResult.data ?? []} resolvedAt={typedMarket.resolved_at} />
           <RecentTrades
             trades={(tradesResult.data ?? []) as (Trade & { profiles?: { username: string } })[]}
+          />
+          <MarketComments
+            marketId={id}
+            comments={commentsWithPositions}
+            isAdmin={profileData?.is_admin ?? false}
+            currentUserId={user?.id}
           />
         </div>
 

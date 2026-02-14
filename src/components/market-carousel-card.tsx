@@ -36,7 +36,7 @@ export default function MarketCarouselCard({ market, history }: MarketCarouselCa
         </div>
 
         <div className="flex-1 relative min-h-0 mt-1">
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {history && history.length > 0 ? (
               <ProbabilitySparkline data={history} compact />
             ) : null}
