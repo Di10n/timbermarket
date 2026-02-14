@@ -203,10 +203,10 @@ export default function TVPage() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left panel: top = featured placeholder, bottom = top 5 list */}
-        <div className="w-2/3 flex flex-col border-r border-border/50">
+        {/* Left panel: top = featured, bottom = top 5 by trading volume; no scroll */}
+        <div className="w-2/3 flex flex-col border-r border-border/50 min-h-0 overflow-hidden">
           {/* Top half: featured market (admin-selected) */}
-          <div className="h-1/2 flex flex-col min-h-0 border-b border-border/50">
+          <div className="h-1/2 flex flex-col min-h-0 overflow-hidden border-b border-border/50">
             {featuredMarket ? (
               <Link
                 href={`/markets/${featuredMarket.id}`}
@@ -248,16 +248,16 @@ export default function TVPage() {
               </div>
             )}
           </div>
-          {/* Bottom half: top 5 most traded (no scroll, fit in half) */}
-          <div className="h-1/2 flex flex-col min-h-0">
-            <div className="px-4 py-1.5 border-b border-border/50 shrink-0">
+          {/* Bottom half: top 5 by recent trading volume (fits without scroll) */}
+          <div className="h-1/2 flex flex-col min-h-0 overflow-hidden">
+            <div className="px-4 py-1 border-b border-border/50 shrink-0">
               <h2 className="text-xs font-semibold text-muted uppercase tracking-wide">
-                Top {LIST_COUNT} by volume
+                Top {LIST_COUNT} by recent trading volume
               </h2>
             </div>
-            <div className="flex-1 flex flex-col min-h-0 p-2 gap-1.5">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-2 gap-1">
               {top10.length === 0 ? (
-                <div className="flex items-center justify-center flex-1">
+                <div className="flex items-center justify-center flex-1 min-h-0">
                   <p className="text-muted text-sm">No active markets</p>
                 </div>
               ) : (
@@ -312,25 +312,27 @@ function TVMarketBlock({
   return (
     <Link
       href={`/markets/${market.id}`}
-      className="flex-1 min-h-0 flex min-w-0"
+      className="flex-1 min-h-0 flex min-w-0 overflow-hidden"
     >
-      <div className="bg-card border border-border rounded-lg px-2 py-1.5 hover:border-border/80 hover:bg-card-hover transition-all flex items-center justify-between gap-2 w-full min-h-0 flex-1">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-border tabular-nums shrink-0 w-3.5">
+      <div className="bg-card border border-border rounded px-2 py-1 hover:border-border/80 hover:bg-card-hover transition-all flex items-center justify-between gap-2 w-full min-h-0 flex-1 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] font-bold text-border tabular-nums shrink-0 w-3">
               {rank}
             </span>
-            <h2 className="text-foreground font-medium text-[11px] leading-tight truncate">
+            <h2 className="text-foreground font-medium text-[10px] leading-tight truncate min-w-0">
               {market.question}
             </h2>
           </div>
-          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted">
-            <span className="text-accent font-medium">
-              {formatShares(market.recentShares)} shares
+          <div className="flex items-center gap-2 mt-0.5 text-[9px] text-muted">
+            <span className="text-accent font-medium truncate">
+              {formatLeaves(market.volume)} vol
             </span>
-            <span>{formatLeaves(market.volume)} vol</span>
+            <span className="truncate">
+              {formatShares(market.recentShares)} shares (10m)
+            </span>
           </div>
-          <div className="flex h-1 rounded-full overflow-hidden bg-border/30 gap-px mt-0.5">
+          <div className="flex h-0.5 rounded-full overflow-hidden bg-border/30 gap-px mt-0.5">
             <div
               className="bg-yes/80 rounded-l-full transition-all duration-300"
               style={{ width: `${yesPercent}%` }}
@@ -342,7 +344,7 @@ function TVMarketBlock({
           </div>
         </div>
         <div
-          className={`text-base font-bold tabular-nums leading-tight shrink-0 ${
+          className={`text-sm font-bold tabular-nums leading-tight shrink-0 ${
             market.probability >= 0.5 ? "text-yes" : "text-no"
           }`}
         >
