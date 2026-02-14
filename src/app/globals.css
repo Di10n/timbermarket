@@ -105,3 +105,33 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 body {
   overscroll-behavior-y: contain;
 }
+
+/* Falling leaves on TV Recent Trades */
+@keyframes leaf-fall {
+  0% {
+    transform: translateY(-10%) rotate(0deg);
+    opacity: 0.92;
+  }
+  60% {
+    transform: translateY(70vh) rotate(200deg);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(110vh) rotate(380deg);
+    opacity: 0;
+  }
+}
+.leaf-fall {
+  animation: leaf-fall 3s ease-in forwards;
+}
+@keyframes leaf-wiggle {
+  0%, 100% { transform: translateX(-8px) rotate(-3deg); }
+  20% { transform: translateX(4px) rotate(2deg); }
+  40% { transform: translateX(-5px) rotate(-1deg); }
+  60% { transform: translateX(7px) rotate(3deg); }
+  80% { transform: translateX(-6px) rotate(-2deg); }
+}
+.leaf-wiggle {
+  animation: leaf-wiggle 0.5s ease-in-out infinite;
+  display: inline-block;
+}
