@@ -14,11 +14,13 @@ import LeafIcon from "@/components/leaf-icon";
 interface PortfolioTabsProps {
   positions: PositionWithMarket[];
   trades: TradeWithMarket[];
+  netInvestmentByMarket?: Map<string, number>;
 }
 
 export default function PortfolioTabs({
   positions,
   trades,
+  netInvestmentByMarket = new Map(),
 }: PortfolioTabsProps) {
   const [tab, setTab] = useState<"positions" | "trades">("positions");
 
@@ -66,7 +68,8 @@ export default function PortfolioTabs({
                 ? pos.yes_shares * pos.markets.probability +
                   pos.no_shares * (1 - pos.markets.probability)
                 : 0;
-            const pnl = currentValue - pos.total_invested;
+            const netInvested = netInvestmentByMarket.get(pos.market_id) ?? pos.total_invested;
+            const pnl = currentValue - netInvested;
 
             return (
               <Link key={pos.id} href={`/markets/${pos.market_id}`} className="block">
@@ -88,7 +91,7 @@ export default function PortfolioTabs({
                           </span>
                         )}
                         <span>
-                          Invested: {formatLeaves(pos.total_invested)}
+                          Invested: {formatLeaves(netInvested)} <LeafIcon />
                         </span>
                         {pos.markets.status === "resolved" && (
                           <span className="px-1.5 py-0.5 bg-border/50 text-foreground">
@@ -100,7 +103,7 @@ export default function PortfolioTabs({
                     {pos.markets.status === "active" && (
                       <div className="text-right">
                         <p className="text-sm font-medium text-foreground">
-                          {formatLeaves(currentValue)}
+                          {formatLeaves(currentValue)} <LeafIcon />
                         </p>
                         <p
                           className={`text-xs ${
@@ -108,7 +111,7 @@ export default function PortfolioTabs({
                           }`}
                         >
                           {pnl >= 0 ? "+" : ""}
-                          {formatLeaves(pnl)}
+                          {formatLeaves(pnl)} <LeafIcon />
                         </p>
                       </div>
                     )}

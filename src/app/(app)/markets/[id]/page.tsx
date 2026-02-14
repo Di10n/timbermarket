@@ -4,7 +4,7 @@ import TradePanel from "@/components/trade-panel";
 import ProbabilityChart from "@/components/probability-chart";
 import RecentTrades from "@/components/recent-trades";
 import MarketComments from "@/components/market-comments";
-import { formatProbability, timeAgo } from "@/lib/utils";
+import { formatProbability, timeAgo, formatLeaves } from "@/lib/utils";
 import type { Market, Position, Trade, CommentWithProfile } from "@/lib/types";
 
 export default async function MarketPage({
@@ -105,11 +105,18 @@ export default async function MarketPage({
               <p className="text-muted text-sm mb-2">{typedMarket.description}</p>
             )}
             <div className="flex items-center gap-3 text-sm text-muted">
-              <span>Created {timeAgo(typedMarket.created_at)}</span>
+              <span className="font-medium">{formatLeaves(typedMarket.volume)} Vol.</span>
+              <span>•</span>
+              <span>{timeAgo(typedMarket.created_at)}</span>
+              <span>•</span>
+              <span>{commentsWithPositions.length} comment{commentsWithPositions.length !== 1 ? 's' : ''}</span>
               {typedMarket.status === "resolved" && (
-                <span className="px-2 py-0.5 bg-border/50 rounded text-foreground text-xs font-medium">
-                  Resolved: {typedMarket.resolution}
-                </span>
+                <>
+                  <span>•</span>
+                  <span className="px-2 py-0.5 bg-border/50 rounded text-foreground text-xs font-medium">
+                    Resolved: {typedMarket.resolution}
+                  </span>
+                </>
               )}
             </div>
           </div>
