@@ -116,19 +116,25 @@ export default async function Home() {
     traderCountMap.set(pos.market_id, (traderCountMap.get(pos.market_id) ?? 0) + 1);
   }
 
-  // Build carousel: up to 3 markets the user has traded on, then fill to 5 with top-volume
+  // Build carousel: up to 3 markets the user has traded on, then featured market, then fill to 5 with top-volume
   const userMarketIds = new Set(
     ((userPositionsResult.data ?? []) as { market_id: string }[]).map((p) => p.market_id)
   );
   const userTradedMarkets = topMarkets
     .filter((m) => userMarketIds.has(m.id))
     .slice(0, 3);
-  const userTradedIds = new Set(userTradedMarkets.map((m) => m.id));
-  const remainingSlots = 5 - userTradedMarkets.length;
+  const carouselIds = new Set(userTradedMarkets.map((m) => m.id));
+
+  const featuredMarket = topMarkets.find((m) => m.is_featured && !carouselIds.has(m.id));
+  if (featuredMarket) {
+    carouselIds.add(featuredMarket.id);
+  }
+
+  const remainingSlots = 5 - userTradedMarkets.length - (featuredMarket ? 1 : 0);
   const volumeMarkets = topMarkets
-    .filter((m) => !userTradedIds.has(m.id))
+    .filter((m) => !carouselIds.has(m.id))
     .slice(0, remainingSlots);
-  const carouselMarkets = [...userTradedMarkets, ...volumeMarkets];
+  const carouselMarkets = [...(featuredMarket ? [featuredMarket] : []), ...userTradedMarkets, ...volumeMarkets];
 
   const marketIds = topMarkets.map((m) => m.id);
 
