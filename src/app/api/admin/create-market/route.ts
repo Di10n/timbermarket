@@ -24,16 +24,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const { question, description, initialProbability, ante } = await request.json();
+  const { question, description, marketType, initialProbability, outcomes, ante } = await request.json();
 
   if (!question || typeof question !== "string") {
     return NextResponse.json({ error: "Question is required" }, { status: 400 });
   }
 
-  const prob = parseFloat(initialProbability);
-  if (isNaN(prob) || prob <= 0 || prob >= 1) {
+  const type = marketType || 'binary';
+
+  if (!['binary', 'multi'].includes(type)) {
     return NextResponse.json(
-      { error: "Probability must be between 0 and 1" },
+      { error: "Invalid market type" },
       { status: 400 }
     );
   }
@@ -47,13 +48,51 @@ export async function POST(request: Request) {
   }
 
   const serviceClient = await createServiceClient();
-  const { data, error } = await serviceClient.rpc("create_market", {
-    p_creator_id: user.id,
-    p_question: question,
-    p_description: description || null,
-    p_initial_prob: prob,
-    p_ante: anteAmount,
-  });
+  let data, error;
+
+  if (type === 'binary') {
+    // Binary market - requires initial probability
+    const prob = parseFloat(initialProbability);
+    if (isNaN(prob) || prob <= 0 || prob >= 1) {
+      return NextResponse.json(
+        { error: "Probability must be between 0 and 1" },
+        { status: 400 }
+      );
+    }
+
+    ({ data, error } = await serviceClient.rpc("create_market", {
+      p_creator_id: user.id,
+      p_question: question,
+      p_description: description || null,
+      p_initial_prob: prob,
+      p_ante: anteAmount,
+    }));
+  } else {
+    // Multi-outcome market - requires outcomes array
+    if (!Array.isArray(outcomes) || outcomes.length < 2 || outcomes.length > 10) {
+      return NextResponse.json(
+        { error: "Outcomes must be an array with 2-10 items" },
+        { status: 400 }
+      );
+    }
+
+    // Validate outcomes are unique non-empty strings
+    const uniqueOutcomes = new Set(outcomes.map((o: string) => o.trim()).filter(Boolean));
+    if (uniqueOutcomes.size !== outcomes.length) {
+      return NextResponse.json(
+        { error: "Outcomes must be unique and non-empty" },
+        { status: 400 }
+      );
+    }
+
+    ({ data, error } = await serviceClient.rpc("create_market_multi", {
+      p_creator_id: user.id,
+      p_question: question,
+      p_description: description || null,
+      p_outcomes: outcomes,
+      p_ante: anteAmount,
+    }));
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

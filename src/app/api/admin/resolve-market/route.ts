@@ -33,26 +33,60 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate resolution
-  const validResolutions = ["YES", "NO", "N/A"];
-  const isPercentage =
-    !validResolutions.includes(resolution) &&
-    !isNaN(parseFloat(resolution)) &&
-    parseFloat(resolution) >= 0 &&
-    parseFloat(resolution) <= 1;
+  const serviceClient = await createServiceClient();
 
-  if (!validResolutions.includes(resolution) && !isPercentage) {
+  // Fetch market to determine type
+  const { data: market, error: marketError } = await serviceClient
+    .from("markets")
+    .select("market_type, outcomes")
+    .eq("id", marketId)
+    .single();
+
+  if (marketError || !market) {
     return NextResponse.json(
-      { error: "Resolution must be YES, NO, N/A, or a number between 0 and 1" },
-      { status: 400 }
+      { error: "Market not found" },
+      { status: 404 }
     );
   }
 
-  const serviceClient = await createServiceClient();
-  const { error } = await serviceClient.rpc("resolve_market", {
-    p_market_id: marketId,
-    p_resolution: resolution,
-  });
+  let error;
+
+  if (market.market_type === 'binary') {
+    // Binary market validation
+    const validResolutions = ["YES", "NO", "N/A"];
+    const isPercentage =
+      !validResolutions.includes(resolution) &&
+      !isNaN(parseFloat(resolution)) &&
+      parseFloat(resolution) >= 0 &&
+      parseFloat(resolution) <= 1;
+
+    if (!validResolutions.includes(resolution) && !isPercentage) {
+      return NextResponse.json(
+        { error: "Resolution must be YES, NO, N/A, or a number between 0 and 1" },
+        { status: 400 }
+      );
+    }
+
+    ({ error } = await serviceClient.rpc("resolve_market", {
+      p_market_id: marketId,
+      p_resolution: resolution,
+    }));
+  } else {
+    // Multi-outcome market validation
+    const validOutcomes = [...(market.outcomes || []), 'N/A'];
+
+    if (!validOutcomes.includes(resolution)) {
+      return NextResponse.json(
+        { error: `Resolution must be one of: ${validOutcomes.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    ({ error } = await serviceClient.rpc("resolve_market_multi", {
+      p_market_id: marketId,
+      p_winning_outcome: resolution,
+    }));
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

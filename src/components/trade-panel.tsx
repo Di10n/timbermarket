@@ -8,6 +8,11 @@ import {
   calculateSellPayout,
   getProbabilityAfterSell,
 } from "@/lib/amm";
+import {
+  calculateBuySharesFpmm,
+  calculateSellPayoutFpmm,
+  getFpmmProbabilities,
+} from "@/lib/fpmm";
 import { formatProbability, formatShares, formatLeaves } from "@/lib/utils";
 import type { Market, Position } from "@/lib/types";
 import LeafIcon from "@/components/leaf-icon";
@@ -19,6 +24,15 @@ interface TradePanelProps {
   isLoggedIn?: boolean;
 }
 
+const OUTCOME_COLORS = [
+  'blue', 'green', 'purple', 'orange', 'red',
+  'pink', 'cyan', 'yellow', 'indigo', 'teal'
+];
+
+function getOutcomeColor(index: number): string {
+  return OUTCOME_COLORS[index % OUTCOME_COLORS.length];
+}
+
 export default function TradePanel({
   market,
   position,
@@ -27,10 +41,18 @@ export default function TradePanel({
 }: TradePanelProps) {
   const searchParams = useSearchParams();
   const outcomeParam = searchParams.get("outcome");
-  const initialOutcome = (outcomeParam === "YES" || outcomeParam === "NO") ? outcomeParam : "YES";
+
+  const isMultiOutcome = market.market_type === 'multi';
+  const outcomes = isMultiOutcome ? (market.outcomes || []) : ['YES', 'NO'];
+
+  // Determine initial outcome
+  let initialOutcome = outcomes[0];
+  if (outcomeParam && outcomes.includes(outcomeParam)) {
+    initialOutcome = outcomeParam;
+  }
 
   const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
-  const [outcome, setOutcome] = useState<"YES" | "NO">(initialOutcome);
+  const [outcome, setOutcome] = useState<string>(initialOutcome);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,64 +60,109 @@ export default function TradePanel({
 
   // Update outcome when URL parameter changes
   useEffect(() => {
-    if (outcomeParam === "YES" || outcomeParam === "NO") {
+    if (outcomeParam && outcomes.includes(outcomeParam)) {
       setOutcome(outcomeParam);
     }
-  }, [outcomeParam]);
+  }, [outcomeParam, outcomes]);
 
   const numAmount = parseFloat(amount) || 0;
   const isActive = market.status === "active";
 
+  // Calculate probabilities
+  let probabilities: Record<string, number> = {};
+  if (isMultiOutcome && market.outcome_pools) {
+    probabilities = getFpmmProbabilities(market.outcome_pools);
+  } else {
+    probabilities = {
+      'YES': market.probability,
+      'NO': 1 - market.probability,
+    };
+  }
+
   // Calculate preview
   let previewShares = 0;
-  let previewProb = market.probability;
+  let previewProb = probabilities[outcome] || 0;
   let previewPayout = 0;
   let previewRedeemed = 0;
 
   if (numAmount > 0 && isActive) {
     if (mode === "BUY") {
-      previewShares = calculateBuyShares(
-        market.pool_yes,
-        market.pool_no,
-        market.p,
-        numAmount,
-        outcome
-      );
-      previewProb = getProbabilityAfterBuy(
-        market.pool_yes,
-        market.pool_no,
-        market.p,
-        numAmount,
-        outcome
-      );
-      // Account for auto-redemption of offsetting positions
-      const existingOpposite = outcome === "YES"
-        ? (position?.no_shares ?? 0)
-        : (position?.yes_shares ?? 0);
-      previewRedeemed = Math.min(previewShares, existingOpposite);
-      previewPayout = previewShares - previewRedeemed;
+      if (isMultiOutcome && market.outcome_pools) {
+        // Multi-outcome buy
+        try {
+          const result = calculateBuySharesFpmm(market.outcome_pools, numAmount, outcome);
+          previewShares = result.shares;
+          const newProbs = getFpmmProbabilities(result.newPools);
+          previewProb = newProbs[outcome] || 0;
+          previewPayout = previewShares; // No auto-redemption for multi-outcome
+        } catch (e) {
+          // Calculation error, keep defaults
+        }
+      } else {
+        // Binary buy
+        previewShares = calculateBuyShares(
+          market.pool_yes,
+          market.pool_no,
+          market.p,
+          numAmount,
+          outcome as 'YES' | 'NO'
+        );
+        previewProb = getProbabilityAfterBuy(
+          market.pool_yes,
+          market.pool_no,
+          market.p,
+          numAmount,
+          outcome as 'YES' | 'NO'
+        );
+        // Account for auto-redemption of offsetting positions (binary only)
+        const existingOpposite = outcome === "YES"
+          ? (position?.no_shares ?? 0)
+          : (position?.yes_shares ?? 0);
+        previewRedeemed = Math.min(previewShares, existingOpposite);
+        previewPayout = previewShares - previewRedeemed;
+      }
     } else {
-      const maxShares =
-        outcome === "YES"
-          ? position?.yes_shares ?? 0
-          : position?.no_shares ?? 0;
+      // SELL mode
+      let maxShares = 0;
+
+      if (isMultiOutcome && position?.shares_by_outcome) {
+        maxShares = position.shares_by_outcome[outcome] ?? 0;
+      } else if (!isMultiOutcome && position) {
+        maxShares = outcome === "YES" ? position.yes_shares : position.no_shares;
+      }
+
       const sharesToSell = Math.min(numAmount, maxShares);
+
       if (sharesToSell > 0) {
-        previewPayout = calculateSellPayout(
-          market.pool_yes,
-          market.pool_no,
-          market.p,
-          sharesToSell,
-          outcome
-        );
-        previewProb = getProbabilityAfterSell(
-          market.pool_yes,
-          market.pool_no,
-          market.p,
-          sharesToSell,
-          outcome
-        );
-        previewShares = sharesToSell;
+        if (isMultiOutcome && market.outcome_pools) {
+          // Multi-outcome sell
+          try {
+            const result = calculateSellPayoutFpmm(market.outcome_pools, sharesToSell, outcome);
+            previewPayout = result.payout;
+            const newProbs = getFpmmProbabilities(result.newPools);
+            previewProb = newProbs[outcome] || 0;
+            previewShares = sharesToSell;
+          } catch (e) {
+            // Calculation error, keep defaults
+          }
+        } else {
+          // Binary sell
+          previewPayout = calculateSellPayout(
+            market.pool_yes,
+            market.pool_no,
+            market.p,
+            sharesToSell,
+            outcome as 'YES' | 'NO'
+          );
+          previewProb = getProbabilityAfterSell(
+            market.pool_yes,
+            market.pool_no,
+            market.p,
+            sharesToSell,
+            outcome as 'YES' | 'NO'
+          );
+          previewShares = sharesToSell;
+        }
       }
     }
   }
@@ -122,10 +189,14 @@ export default function TradePanel({
         body.amount = numAmount;
       } else {
         // Clamp to available shares to avoid floating-point mismatch with DB
-        const available =
-          outcome === "YES"
-            ? position?.yes_shares ?? 0
-            : position?.no_shares ?? 0;
+        let available = 0;
+
+        if (isMultiOutcome && position?.shares_by_outcome) {
+          available = position.shares_by_outcome[outcome] ?? 0;
+        } else if (!isMultiOutcome && position) {
+          available = outcome === "YES" ? position.yes_shares : position.no_shares;
+        }
+
         const sharesToSell =
           Math.abs(numAmount - available) < 0.01 ? available : Math.min(numAmount, available);
         body.shares = sharesToSell;
@@ -159,8 +230,13 @@ export default function TradePanel({
     }
   }
 
-  const hasPosition =
-    position && (position.yes_shares > 0 || position.no_shares > 0);
+  // Check if user has any position
+  let hasPosition = false;
+  if (isMultiOutcome && position?.shares_by_outcome) {
+    hasPosition = Object.values(position.shares_by_outcome).some(shares => shares > 0);
+  } else if (!isMultiOutcome && position) {
+    hasPosition = position.yes_shares > 0 || position.no_shares > 0;
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 h-full">
@@ -195,29 +271,48 @@ export default function TradePanel({
         </button>
       </div>
 
-      {/* Outcome toggle */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setOutcome("YES")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
-            outcome === "YES"
-              ? "border-yes bg-yes/10 text-yes"
-              : "border-border text-muted hover:text-foreground"
-          }`}
-        >
-          Yes {formatProbability(market.probability)}
-        </button>
-        <button
-          onClick={() => setOutcome("NO")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
-            outcome === "NO"
-              ? "border-no bg-no/10 text-no"
-              : "border-border text-muted hover:text-foreground"
-          }`}
-        >
-          No {formatProbability(1 - market.probability)}
-        </button>
-      </div>
+      {/* Outcome buttons */}
+      {isMultiOutcome ? (
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {outcomes.map((o, index) => (
+            <button
+              key={o}
+              onClick={() => setOutcome(o)}
+              className={`py-2 px-3 text-sm font-medium rounded-lg border transition-colors ${
+                outcome === o
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border text-muted hover:text-foreground"
+              }`}
+            >
+              <div className="truncate">{o}</div>
+              <div className="text-xs">{formatProbability(probabilities[o] || 0)}</div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setOutcome("YES")}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+              outcome === "YES"
+                ? "border-yes bg-yes/10 text-yes"
+                : "border-border text-muted hover:text-foreground"
+            }`}
+          >
+            Yes {formatProbability(probabilities['YES'])}
+          </button>
+          <button
+            onClick={() => setOutcome("NO")}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+              outcome === "NO"
+                ? "border-no bg-no/10 text-no"
+                : "border-border text-muted hover:text-foreground"
+            }`}
+          >
+            No {formatProbability(probabilities['NO'])}
+          </button>
+        </div>
+      )}
 
       {/* Amount input */}
       <div className="mb-4">
@@ -241,7 +336,11 @@ export default function TradePanel({
         )}
         {mode === "SELL" && position && (
           <p className="text-xs text-muted mt-1">
-            Available: {formatShares(outcome === "YES" ? position.yes_shares : position.no_shares)} shares
+            Available: {formatShares(
+              isMultiOutcome && position.shares_by_outcome
+                ? position.shares_by_outcome[outcome] ?? 0
+                : outcome === "YES" ? position.yes_shares : position.no_shares
+            )} shares
           </p>
         )}
       </div>
@@ -253,9 +352,9 @@ export default function TradePanel({
             <>
               <div className="flex justify-between">
                 <span className="text-muted">Shares</span>
-                <span>{formatShares(previewShares - previewRedeemed)}</span>
+                <span>{formatShares(isMultiOutcome ? previewShares : previewShares - previewRedeemed)}</span>
               </div>
-              {previewRedeemed > 0 && (
+              {!isMultiOutcome && previewRedeemed > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted">Auto-redeemed</span>
                   <span className="text-yes">
@@ -302,9 +401,11 @@ export default function TradePanel({
           (mode === "BUY" && numAmount > balance)
         }
         className={`w-full py-2.5 font-medium rounded-lg transition-colors disabled:opacity-50 ${
-          outcome === "YES"
+          !isMultiOutcome && outcome === "YES"
             ? "bg-yes hover:bg-yes/90 text-background"
-            : "bg-no hover:bg-no/90 text-white"
+            : !isMultiOutcome && outcome === "NO"
+              ? "bg-no hover:bg-no/90 text-white"
+              : "bg-accent hover:bg-accent-hover text-background"
         }`}
       >
         {loading
@@ -320,20 +421,34 @@ export default function TradePanel({
       {hasPosition && (
         <div className="mt-4 pt-4 border-t border-border">
           <p className="text-xs text-muted mb-2">Your position</p>
-          <div className="flex gap-4 text-sm">
-            {position!.yes_shares > 0 && (
-              <div>
-                <span className="text-yes">
-                  {formatShares(position!.yes_shares)} YES
-                </span>
-              </div>
-            )}
-            {position!.no_shares > 0 && (
-              <div>
-                <span className="text-no">
-                  {formatShares(position!.no_shares)} NO
-                </span>
-              </div>
+          <div className="flex flex-wrap gap-3 text-sm">
+            {isMultiOutcome && position?.shares_by_outcome ? (
+              Object.entries(position.shares_by_outcome)
+                .filter(([_, shares]) => shares > 0)
+                .map(([o, shares]) => (
+                  <div key={o}>
+                    <span className="text-accent">
+                      {formatShares(shares)} {o}
+                    </span>
+                  </div>
+                ))
+            ) : (
+              <>
+                {position && position.yes_shares > 0 && (
+                  <div>
+                    <span className="text-yes">
+                      {formatShares(position.yes_shares)} YES
+                    </span>
+                  </div>
+                )}
+                {position && position.no_shares > 0 && (
+                  <div>
+                    <span className="text-no">
+                      {formatShares(position.no_shares)} NO
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

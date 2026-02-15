@@ -125,7 +125,9 @@ function FeaturedMarketForm({
 function CreateMarketForm() {
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
+  const [marketType, setMarketType] = useState<'binary' | 'multi'>('binary');
   const [probability, setProbability] = useState(50);
+  const [outcomesText, setOutcomesText] = useState("");
   const [ante, setAnte] = useState("3000");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -137,15 +139,43 @@ function CreateMarketForm() {
     setLoading(true);
 
     try {
+      const body: Record<string, unknown> = {
+        question,
+        description: description || undefined,
+        marketType,
+        ante: parseFloat(ante),
+      };
+
+      if (marketType === 'binary') {
+        body.initialProbability = probability / 100;
+      } else {
+        // Parse outcomes from comma-separated text
+        const outcomes = outcomesText
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        if (outcomes.length < 2 || outcomes.length > 10) {
+          setMessage("Must have 2-10 outcomes");
+          setLoading(false);
+          return;
+        }
+
+        // Check for duplicates
+        const uniqueOutcomes = new Set(outcomes);
+        if (uniqueOutcomes.size !== outcomes.length) {
+          setMessage("Outcomes must be unique");
+          setLoading(false);
+          return;
+        }
+
+        body.outcomes = outcomes;
+      }
+
       const res = await fetch("/api/admin/create-market", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          description: description || undefined,
-          initialProbability: probability / 100,
-          ante: parseFloat(ante),
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -160,6 +190,7 @@ function CreateMarketForm() {
       setQuestion("");
       setDescription("");
       setProbability(50);
+      setOutcomesText("");
       setAnte("3000");
       router.refresh();
     } catch {
@@ -175,12 +206,28 @@ function CreateMarketForm() {
 
       <form onSubmit={handleCreate} className="space-y-4">
         <div>
+          <label className="block text-sm text-muted mb-1">Market Type</label>
+          <select
+            value={marketType}
+            onChange={(e) => setMarketType(e.target.value as 'binary' | 'multi')}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
+          >
+            <option value="binary">Binary (YES/NO)</option>
+            <option value="multi">Multi-Outcome</option>
+          </select>
+        </div>
+
+        <div>
           <label className="block text-sm text-muted mb-1">Question</label>
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Will X happen by Y date?"
+            placeholder={
+              marketType === 'binary'
+                ? "Will X happen by Y date?"
+                : "Which team will win?"
+            }
             className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
             required
           />
@@ -198,23 +245,42 @@ function CreateMarketForm() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm text-muted mb-1">
-            Initial Probability: {probability}%
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="99"
-            value={probability}
-            onChange={(e) => setProbability(parseInt(e.target.value))}
-            className="w-full accent-accent"
-          />
-          <div className="flex justify-between text-xs text-muted">
-            <span>1%</span>
-            <span>99%</span>
+        {marketType === 'binary' ? (
+          <div>
+            <label className="block text-sm text-muted mb-1">
+              Initial Probability: {probability}%
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="99"
+              value={probability}
+              onChange={(e) => setProbability(parseInt(e.target.value))}
+              className="w-full accent-accent"
+            />
+            <div className="flex justify-between text-xs text-muted">
+              <span>1%</span>
+              <span>99%</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div>
+            <label className="block text-sm text-muted mb-1">
+              Outcomes (comma-separated, 2-10 outcomes)
+            </label>
+            <textarea
+              value={outcomesText}
+              onChange={(e) => setOutcomesText(e.target.value)}
+              placeholder="OpenAI, Anthropic, NVIDIA, Google"
+              rows={3}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent resize-none"
+              required
+            />
+            <p className="text-xs text-muted mt-1">
+              Equal probability will be assigned to all outcomes
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm text-muted mb-1">
@@ -258,6 +324,9 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
+
+  const selectedMarketData = markets.find(m => m.id === selectedMarket);
+  const isMultiOutcome = selectedMarketData?.market_type === 'multi';
 
   async function handleResolve(e: React.FormEvent) {
     e.preventDefault();
@@ -327,43 +396,74 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
 
           <div>
             <label className="block text-sm text-muted mb-1">Resolution</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["YES", "NO", "N/A", "PERCENT"] as const).map((opt) => (
+            {isMultiOutcome ? (
+              <div className="grid grid-cols-2 gap-2">
+                {selectedMarketData?.outcomes?.map((outcome) => (
+                  <button
+                    key={outcome}
+                    type="button"
+                    onClick={() => setResolution(outcome)}
+                    className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
+                      resolution === outcome
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {outcome}
+                  </button>
+                ))}
                 <button
-                  key={opt}
                   type="button"
-                  onClick={() => setResolution(opt)}
+                  onClick={() => setResolution('N/A')}
                   className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
-                    resolution === opt
-                      ? opt === "YES"
-                        ? "border-yes bg-yes/10 text-yes"
-                        : opt === "NO"
-                          ? "border-no bg-no/10 text-no"
-                          : "border-accent bg-accent/10 text-accent"
+                    resolution === 'N/A'
+                      ? "border-accent bg-accent/10 text-accent"
                       : "border-border text-muted hover:text-foreground"
                   }`}
                 >
-                  {opt === "PERCENT" ? "%" : opt}
+                  N/A
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["YES", "NO", "N/A", "PERCENT"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setResolution(opt)}
+                      className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
+                        resolution === opt
+                          ? opt === "YES"
+                            ? "border-yes bg-yes/10 text-yes"
+                            : opt === "NO"
+                              ? "border-no bg-no/10 text-no"
+                              : "border-accent bg-accent/10 text-accent"
+                          : "border-border text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {opt === "PERCENT" ? "%" : opt}
+                    </button>
+                  ))}
+                </div>
+                {resolution === "PERCENT" && (
+                  <div className="mt-4">
+                    <label className="block text-sm text-muted mb-1">
+                      Percentage: {customPct}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={customPct}
+                      onChange={(e) => setCustomPct(e.target.value)}
+                      className="w-full accent-accent"
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
-
-          {resolution === "PERCENT" && (
-            <div>
-              <label className="block text-sm text-muted mb-1">
-                Percentage: {customPct}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={customPct}
-                onChange={(e) => setCustomPct(e.target.value)}
-                className="w-full accent-accent"
-              />
-            </div>
-          )}
 
           {message && (
             <p

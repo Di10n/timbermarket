@@ -13,11 +13,17 @@ export interface Market {
   question: string;
   description: string | null;
   creator_id: string;
+  // Binary market fields
   pool_yes: number;
   pool_no: number;
   p: number;
   probability: number;
   total_liquidity: number;
+  // Multi-outcome market fields
+  market_type: 'binary' | 'multi';
+  outcomes?: string[];
+  outcome_pools?: Record<string, number>;
+  // Common fields
   volume: number;
   status: "active" | "resolved" | "cancelled";
   resolution: string | null;
@@ -31,7 +37,7 @@ export interface Trade {
   market_id: string;
   user_id: string;
   type: "BUY" | "SELL" | "REDEEM";
-  outcome: "YES" | "NO";
+  outcome: string; // "YES" | "NO" for binary, custom for multi-outcome
   amount: number;
   shares: number;
   prob_before: number;
@@ -44,8 +50,12 @@ export interface Position {
   id: string;
   user_id: string;
   market_id: string;
+  // Binary market fields
   yes_shares: number;
   no_shares: number;
+  // Multi-outcome market fields
+  shares_by_outcome?: Record<string, number>;
+  // Common fields
   total_invested: number;
 }
 
