@@ -8,6 +8,7 @@ import {
   formatLeaves,
   timeAgo,
 } from "@/lib/utils";
+import { getFpmmProbabilities } from "@/lib/fpmm";
 import Link from "next/link";
 import Image from "next/image";
 import LeafIcon from "@/components/leaf-icon";
@@ -18,6 +19,19 @@ import {
   YAxis,
   ResponsiveContainer,
 } from "recharts";
+
+const OUTCOME_COLORS = [
+  "rgb(59, 130, 246)", // blue
+  "rgb(34, 197, 94)", // green
+  "rgb(168, 85, 247)", // purple
+  "rgb(251, 146, 60)", // orange
+  "rgb(239, 68, 68)", // red
+  "rgb(236, 72, 153)", // pink
+  "rgb(6, 182, 212)", // cyan
+  "rgb(250, 204, 21)", // yellow
+  "rgb(99, 102, 241)", // indigo
+  "rgb(20, 184, 166)", // teal
+];
 
 const RANKING_WINDOW = 10 * 60 * 1000; // 10 minutes
 const POLL_INTERVAL = 3_000; // poll every 3 seconds
@@ -552,8 +566,58 @@ function TVMarketTicker({ markets }: { markets: RankedMarket[] }) {
 }
 
 function TVMarketTickerItem({ market }: { market: RankedMarket }) {
-  const yesPercent = Math.round(market.probability * 100);
-  const noPercent = 100 - yesPercent;
+  const isBinary = market.market_type === "binary";
+
+  if (isBinary) {
+    // Binary market display
+    const yesPercent = Math.round(market.probability * 100);
+    const noPercent = 100 - yesPercent;
+
+    return (
+      <Link
+        href={`/markets/${market.id}`}
+        className="min-w-0 overflow-hidden group shrink-0"
+      >
+        <div className="bg-card/60 border border-border/40 rounded-lg hover:bg-card-hover hover:border-border/80 transition-all flex flex-col w-full overflow-hidden">
+          <div className="flex items-center justify-between gap-4 min-w-0 px-5 pt-3 pb-1.5">
+            <h2 className="text-foreground font-semibold text-xl leading-tight truncate min-w-0 flex-1 group-hover:text-accent transition-colors">
+              {market.question}
+            </h2>
+            <div
+              className={`text-2xl font-black tabular-nums leading-tight shrink-0 ${
+                yesPercent >= 50 ? "text-yes" : "text-no"
+              }`}
+            >
+              {yesPercent}%
+            </div>
+          </div>
+          <div className="flex items-center gap-4 px-5 pb-2.5 text-sm text-muted">
+            <span className="flex items-center gap-1">
+              volume {formatLeaves(market.volume)} <LeafIcon />
+            </span>
+            <span>
+              {market.traderCount} trader{market.traderCount !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="flex h-2.5 w-full overflow-hidden bg-border/20 gap-px rounded-b-lg">
+            <div
+              className="bg-yes transition-all duration-500"
+              style={{ width: `${yesPercent}%` }}
+            />
+            <div
+              className="bg-no transition-all duration-500"
+              style={{ width: `${noPercent}%` }}
+            />
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  // Multi-resolution market display
+  const probs = market.outcome_pools ? getFpmmProbabilities(market.outcome_pools) : {};
+  const sortedOutcomes = Object.entries(probs)
+    .sort(([, a], [, b]) => b - a);
 
   return (
     <Link
@@ -561,17 +625,24 @@ function TVMarketTickerItem({ market }: { market: RankedMarket }) {
       className="min-w-0 overflow-hidden group shrink-0"
     >
       <div className="bg-card/60 border border-border/40 rounded-lg hover:bg-card-hover hover:border-border/80 transition-all flex flex-col w-full overflow-hidden">
-        <div className="flex items-center justify-between gap-4 min-w-0 px-5 pt-3 pb-1.5">
-          <h2 className="text-foreground font-semibold text-xl leading-tight truncate min-w-0 flex-1 group-hover:text-accent transition-colors">
+        <div className="flex items-start justify-between gap-4 min-w-0 px-5 pt-3 pb-1.5">
+          <h2 className="text-foreground font-semibold text-xl leading-tight line-clamp-2 min-w-0 flex-1 group-hover:text-accent transition-colors">
             {market.question}
           </h2>
-          <div
-            className={`text-2xl font-black tabular-nums leading-tight shrink-0 ${
-              yesPercent >= 50 ? "text-yes" : "text-no"
-            }`}
-          >
-            {yesPercent}%
-          </div>
+        </div>
+        <div className="flex items-center gap-3 px-5 pb-1.5 text-base flex-wrap">
+          {sortedOutcomes.map(([outcome, prob], idx) => (
+            <div key={outcome} className="flex items-center gap-1.5">
+              <div
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: OUTCOME_COLORS[idx % OUTCOME_COLORS.length] }}
+              />
+              <span className="text-foreground font-medium">{outcome}</span>
+              <span className="text-foreground font-bold tabular-nums">
+                {Math.round(prob * 100)}%
+              </span>
+            </div>
+          ))}
         </div>
         <div className="flex items-center gap-4 px-5 pb-2.5 text-sm text-muted">
           <span className="flex items-center gap-1">
@@ -581,15 +652,17 @@ function TVMarketTickerItem({ market }: { market: RankedMarket }) {
             {market.traderCount} trader{market.traderCount !== 1 ? "s" : ""}
           </span>
         </div>
-        <div className="flex h-2.5 w-full overflow-hidden bg-border/20 gap-px rounded-b-lg">
-          <div
-            className="bg-yes transition-all duration-500"
-            style={{ width: `${yesPercent}%` }}
-          />
-          <div
-            className="bg-no transition-all duration-500"
-            style={{ width: `${noPercent}%` }}
-          />
+        <div className="flex h-2.5 w-full overflow-hidden bg-border/20 rounded-b-lg">
+          {sortedOutcomes.map(([outcome, prob], idx) => (
+            <div
+              key={outcome}
+              className="transition-all duration-500"
+              style={{
+                width: `${prob * 100}%`,
+                backgroundColor: OUTCOME_COLORS[idx % OUTCOME_COLORS.length],
+              }}
+            />
+          ))}
         </div>
       </div>
     </Link>

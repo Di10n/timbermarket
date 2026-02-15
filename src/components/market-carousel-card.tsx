@@ -50,7 +50,6 @@ export default function MarketCarouselCard({ market, history }: MarketCarouselCa
               <div className="flex flex-wrap gap-4">
                 {Object.entries(getFpmmProbabilities(market.outcome_pools))
                   .sort(([, a], [, b]) => b - a)
-                  .slice(0, 3)
                   .map(([outcome, prob]) => (
                     <div key={outcome}>
                       <div className="text-2xl font-bold text-accent">

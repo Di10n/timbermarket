@@ -117,8 +117,9 @@ export function calculateBuyShares(
 
 /**
  * Calculate payout from selling shares
- * Uses binary search to find cost M where buying M gives exactly sharesToSell
- * Payout = sharesToSell - M
+ * Corrected algorithm that properly reverses buy operation:
+ * 1. Add shares back to target pool
+ * 2. Binary search for payout P where removing P/(N-1) from non-target pools maintains k
  */
 export function calculateSellPayout(
   pools: FpmmPools,
@@ -133,47 +134,77 @@ export function calculateSellPayout(
     throw new Error(`Outcome ${outcome} not found`);
   }
 
-  // Binary search for cost
+  const outcomes = Object.keys(pools);
+  const n = outcomes.length;
+
+  if (n < 2) {
+    throw new Error('Must have at least 2 outcomes');
+  }
+
+  // Calculate invariant
+  const k = calculateInvariant(pools);
+
+  // Add shares back to target pool
+  const newTargetPool = pools[outcome] + sharesToSell;
+
+  // Calculate target product for non-target pools: k / newTargetPool
+  const targetProduct = k / newTargetPool;
+
+  // Binary search for payout P
   let low = 0;
-  let high = sharesToSell;
+  let high = pools[outcome] * 10; // Upper bound
   const epsilon = 0.0001;
   const maxIterations = 100;
 
   let iterations = 0;
-  let bestCost = 0;
+  let bestPayout = 0;
 
   while (high - low > epsilon && iterations < maxIterations) {
     const mid = (low + high) / 2;
 
-    try {
-      const result = calculateBuyShares(pools, mid, outcome);
+    // Calculate product of (pool - mid/(N-1)) for all non-target pools
+    let testProduct = 1;
+    let valid = true;
 
-      if (Math.abs(result.shares - sharesToSell) < epsilon) {
-        bestCost = mid;
-        break;
+    for (const o of outcomes) {
+      if (o !== outcome) {
+        const newPool = pools[o] - mid / (n - 1);
+        if (newPool <= 0) {
+          valid = false;
+          break;
+        }
+        testProduct *= newPool;
       }
+    }
 
-      if (result.shares < sharesToSell) {
-        low = mid;
-      } else {
-        high = mid;
-      }
+    if (!valid) {
+      // Removing too much, reduce high
+      high = mid;
+      continue;
+    }
 
-      bestCost = mid;
-    } catch (e) {
+    if (Math.abs(testProduct - targetProduct) < epsilon) {
+      bestPayout = mid;
+      break;
+    }
+
+    if (testProduct > targetProduct) {
+      // Need to remove more
+      low = mid;
+    } else {
+      // Removing too much
       high = mid;
     }
 
+    bestPayout = mid;
     iterations++;
   }
 
-  const payout = sharesToSell - bestCost;
-
-  if (payout < 0) {
+  if (bestPayout < 0) {
     return 0;
   }
 
-  return payout;
+  return bestPayout;
 }
 
 /**
@@ -190,6 +221,79 @@ export function getProbabilityAfterBuy(
 }
 
 /**
+ * Calculate new pools after selling (corrected algorithm)
+ */
+function calculateSellPools(
+  pools: FpmmPools,
+  sharesToSell: number,
+  outcome: string
+): FpmmPools {
+  const outcomes = Object.keys(pools);
+  const n = outcomes.length;
+  const k = calculateInvariant(pools);
+
+  // Add shares back to target pool
+  const newTargetPool = pools[outcome] + sharesToSell;
+
+  // Calculate target product
+  const targetProduct = k / newTargetPool;
+
+  // Binary search for payout
+  let low = 0;
+  let high = pools[outcome] * 10;
+  const epsilon = 0.0001;
+  let bestPayout = 0;
+
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2;
+
+    let testProduct = 1;
+    let valid = true;
+
+    for (const o of outcomes) {
+      if (o !== outcome) {
+        const newPool = pools[o] - mid / (n - 1);
+        if (newPool <= 0) {
+          valid = false;
+          break;
+        }
+        testProduct *= newPool;
+      }
+    }
+
+    if (!valid) {
+      high = mid;
+      continue;
+    }
+
+    if (Math.abs(testProduct - targetProduct) < epsilon) {
+      bestPayout = mid;
+      break;
+    }
+
+    if (testProduct > targetProduct) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+
+    bestPayout = mid;
+  }
+
+  // Build new pools
+  const newPools: FpmmPools = {};
+  for (const o of outcomes) {
+    if (o === outcome) {
+      newPools[o] = newTargetPool;
+    } else {
+      newPools[o] = pools[o] - bestPayout / (n - 1);
+    }
+  }
+
+  return newPools;
+}
+
+/**
  * Get probability after selling
  */
 export function getProbabilityAfterSell(
@@ -197,35 +301,7 @@ export function getProbabilityAfterSell(
   sharesToSell: number,
   outcome: string
 ): number {
-  // Binary search to find the cost that gives us these shares
-  let low = 0;
-  let high = sharesToSell;
-  const epsilon = 0.0001;
-  let bestResult: FpmmResult | null = null;
-
-  for (let i = 0; i < 100; i++) {
-    const mid = (low + high) / 2;
-    try {
-      const result = calculateBuyShares(pools, mid, outcome);
-      if (Math.abs(result.shares - sharesToSell) < epsilon) {
-        bestResult = result;
-        break;
-      }
-      if (result.shares < sharesToSell) {
-        low = mid;
-      } else {
-        high = mid;
-      }
-      bestResult = result;
-    } catch {
-      high = mid;
-    }
-  }
-
-  if (!bestResult) {
-    return getFpmmProbabilities(pools)[outcome];
-  }
-
-  const newProbs = getFpmmProbabilities(bestResult.newPools);
+  const newPools = calculateSellPools(pools, sharesToSell, outcome);
+  const newProbs = getFpmmProbabilities(newPools);
   return newProbs[outcome];
 }

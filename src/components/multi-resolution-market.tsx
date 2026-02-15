@@ -66,9 +66,9 @@ export default function MultiResolutionMarket({
             )}
           </div>
 
-          {/* Show top 3 outcomes with probabilities */}
+          {/* Show all outcomes with probabilities */}
           <div className="flex flex-wrap items-center gap-4 mb-2">
-            {sortedOutcomes.slice(0, 3).map(({ outcome, probability }, idx) => (
+            {sortedOutcomes.map(({ outcome, probability }, idx) => (
               <div key={outcome} className="flex items-center gap-2">
                 <div
                   className="w-3 h-3 rounded-full shrink-0"

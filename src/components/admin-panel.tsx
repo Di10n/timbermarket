@@ -446,7 +446,7 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
                             : "border-border text-muted hover:text-foreground"
                         }`}
                       >
-                        {opt === "PERCENT" ? "%" : opt}
+                        {opt === "PERCENT" ? "%" : opt === "N/A" ? "Cancel (Refund All)" : opt}
                       </button>
                     ))}
                   </div>
@@ -475,11 +475,13 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
                       onClick={() => setResolution(outcome)}
                       className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
                         resolution === outcome
-                          ? "border-accent bg-accent/10 text-accent"
+                          ? outcome === "N/A"
+                            ? "border-no bg-no/10 text-no"
+                            : "border-accent bg-accent/10 text-accent"
                           : "border-border text-muted hover:text-foreground"
                       }`}
                     >
-                      {outcome}
+                      {outcome === "N/A" ? "Cancel (Refund All)" : outcome}
                     </button>
                   ))}
                 </div>
