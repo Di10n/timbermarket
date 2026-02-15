@@ -104,7 +104,7 @@ export default async function LeaderboardPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-foreground mb-2"><LeafIcon /> Leaderboard</h1>
         <p className="text-sm text-muted">
-          Top users ranked by total portfolio value (balance + positions)
+          Verified users ranked by total portfolio value (balance + positions)
         </p>
       </div>
 
@@ -139,7 +139,7 @@ export default async function LeaderboardPage() {
           <div className="grid grid-cols-3 divide-x divide-border">
             <div className="py-4 px-2 text-center">
               <div className="text-2xl font-bold text-foreground">{leaderboard.length}</div>
-              <div className="text-xs text-muted">Total Users</div>
+              <div className="text-xs text-muted">Verified Users</div>
             </div>
             <div className="py-4 px-2 text-center">
               <div className="text-2xl font-bold text-foreground">
