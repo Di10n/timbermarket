@@ -36,6 +36,7 @@ export interface Trade {
   shares: number;
   prob_before: number;
   prob_after: number;
+  is_rolled_back: boolean;
   created_at: string;
 }
 

@@ -1,18 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { formatProbability } from "@/lib/utils";
-import type { Market } from "@/lib/types";
+import { formatProbability, formatLeaves, formatShares, timeAgo, cn } from "@/lib/utils";
+import type { Market, Trade } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import LeafIcon from "@/components/leaf-icon";
 
 interface AdminPanelProps {
   activeMarkets: Market[];
+  allMarkets: Market[];
   featuredMarketId: string | null;
 }
 
 export default function AdminPanel({
   activeMarkets,
+  allMarkets,
   featuredMarketId,
 }: AdminPanelProps) {
   return (
@@ -25,6 +28,7 @@ export default function AdminPanel({
         <CreateMarketForm />
         <ResolveMarketForm markets={activeMarkets} />
       </div>
+      <RollbackTradesForm markets={allMarkets} />
     </div>
   );
 }
@@ -379,6 +383,263 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
             {loading ? "Resolving..." : "Resolve Market"}
           </button>
         </form>
+      )}
+    </div>
+  );
+}
+
+interface TradeWithProfile extends Trade {
+  profiles: { username: string };
+}
+
+function RollbackTradesForm({ markets }: { markets: Market[] }) {
+  const [selectedMarket, setSelectedMarket] = useState("");
+  const [trades, setTrades] = useState<TradeWithProfile[]>([]);
+  const [selectedTradeIds, setSelectedTradeIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const router = useRouter();
+
+  const fetchTrades = useCallback(async (marketId: string) => {
+    if (!marketId) {
+      setTrades([]);
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("trades")
+        .select("*, profiles!inner(username)")
+        .eq("market_id", marketId)
+        .neq("type", "REDEEM")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        setMessage("Failed to load trades");
+        setTrades([]);
+      } else {
+        setTrades((data ?? []) as TradeWithProfile[]);
+      }
+    } catch {
+      setMessage("Failed to load trades");
+      setTrades([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setSelectedTradeIds(new Set());
+    fetchTrades(selectedMarket);
+  }, [selectedMarket, fetchTrades]);
+
+  const selectableTradeIds = trades
+    .filter((t) => !t.is_rolled_back)
+    .map((t) => t.id);
+
+  const allSelected =
+    selectableTradeIds.length > 0 &&
+    selectableTradeIds.every((id) => selectedTradeIds.has(id));
+
+  function handleSelectAll() {
+    if (allSelected) {
+      setSelectedTradeIds(new Set());
+    } else {
+      setSelectedTradeIds(new Set(selectableTradeIds));
+    }
+  }
+
+  function handleToggleTrade(tradeId: string) {
+    const next = new Set(selectedTradeIds);
+    if (next.has(tradeId)) {
+      next.delete(tradeId);
+    } else {
+      next.add(tradeId);
+    }
+    setSelectedTradeIds(next);
+  }
+
+  async function handleRollback() {
+    if (selectedTradeIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to rollback ${selectedTradeIds.size} trade(s)? This will reverse balance, position, and pool changes.`
+    );
+    if (!confirmed) return;
+
+    setRollbackLoading(true);
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/admin/rollback-trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tradeIds: Array.from(selectedTradeIds) }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok && res.status !== 207) {
+        setMessage(data.error || "Failed to rollback trades");
+      } else {
+        const succeeded = data.results.filter(
+          (r: { success: boolean }) => r.success
+        ).length;
+        const failed = data.results.filter(
+          (r: { success: boolean }) => !r.success
+        ).length;
+
+        if (failed > 0) {
+          const errors = data.results
+            .filter((r: { success: boolean }) => !r.success)
+            .map((r: { error?: string }) => r.error)
+            .join("; ");
+          setMessage(
+            `${succeeded} rolled back successfully, ${failed} failed: ${errors}`
+          );
+        } else {
+          setMessage(`Successfully rolled back ${succeeded} trade(s).`);
+        }
+      }
+
+      setSelectedTradeIds(new Set());
+      fetchTrades(selectedMarket);
+      router.refresh();
+    } catch {
+      setMessage("Something went wrong");
+    } finally {
+      setRollbackLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4">
+      <h2 className="text-lg font-bold mb-4">Rollback Trades</h2>
+
+      <div className="mb-4">
+        <label className="block text-sm text-muted mb-1">Market</label>
+        <select
+          value={selectedMarket}
+          onChange={(e) => setSelectedMarket(e.target.value)}
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
+        >
+          <option value="">Select a market...</option>
+          {markets.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.question} ({formatProbability(m.probability)}) [{m.status}]
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <p className="text-muted text-sm">Loading trades...</p>
+      ) : !selectedMarket ? null : trades.length === 0 ? (
+        <p className="text-muted text-sm">No trades for this market.</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-muted text-left border-b border-border">
+                  <th className="py-2 pr-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={handleSelectAll}
+                      className="accent-accent"
+                    />
+                  </th>
+                  <th className="py-2 pr-2">User</th>
+                  <th className="py-2 pr-2">Type</th>
+                  <th className="py-2 pr-2">Outcome</th>
+                  <th className="py-2 pr-2">Amount</th>
+                  <th className="py-2 pr-2">Shares</th>
+                  <th className="py-2 pr-2">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((trade) => (
+                  <tr
+                    key={trade.id}
+                    className={cn(
+                      "border-b border-border/50",
+                      trade.is_rolled_back && "opacity-40"
+                    )}
+                  >
+                    <td className="py-2 pr-2">
+                      <input
+                        type="checkbox"
+                        disabled={trade.is_rolled_back}
+                        checked={selectedTradeIds.has(trade.id)}
+                        onChange={() => handleToggleTrade(trade.id)}
+                        className="accent-accent"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <span className={cn(trade.is_rolled_back && "line-through")}>
+                        {trade.profiles.username}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <span className={cn(trade.is_rolled_back && "line-through")}>
+                        {trade.type}
+                      </span>
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 pr-2",
+                        trade.outcome === "YES" ? "text-yes" : "text-no",
+                        trade.is_rolled_back && "line-through"
+                      )}
+                    >
+                      {trade.outcome}
+                    </td>
+                    <td className="py-2 pr-2">
+                      <span className={cn(trade.is_rolled_back && "line-through")}>
+                        {formatLeaves(trade.amount)}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <span className={cn(trade.is_rolled_back && "line-through")}>
+                        {formatShares(trade.shares)}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-2 text-muted">
+                      {timeAgo(trade.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {selectedTradeIds.size > 0 && (
+            <button
+              onClick={handleRollback}
+              disabled={rollbackLoading}
+              className="mt-4 w-full py-2 bg-no hover:bg-no/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {rollbackLoading
+                ? "Rolling back..."
+                : `Rollback ${selectedTradeIds.size} trade${selectedTradeIds.size > 1 ? "s" : ""}`}
+            </button>
+          )}
+        </>
+      )}
+
+      {message && (
+        <p
+          className={`text-sm mt-2 ${
+            message.includes("Successfully") ? "text-yes" : "text-no"
+          }`}
+        >
+          {message}
+        </p>
       )}
     </div>
   );
