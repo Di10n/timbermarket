@@ -43,7 +43,8 @@ export default async function MarketPage({
         .from("probability_history")
         .select("probability, created_at")
         .eq("market_id", id)
-        .order("created_at", { ascending: true }),
+        .order("created_at", { ascending: true })
+        .limit(10000),
       supabase
         .from("trades")
         .select("*, profiles(username)")

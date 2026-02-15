@@ -153,7 +153,8 @@ export default function TVPage() {
           .from("probability_history")
           .select("market_id, probability, created_at")
           .in("market_id", ids)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: true })
+          .limit(10000);
 
         const byMarket: Record<string, ProbPoint[]> = {};
         for (const row of historyRows ?? []) {
@@ -331,10 +332,7 @@ export default function TVPage() {
             </h2>
             {tradeCount != null && (
               <span className="text-muted text-base tabular-nums">
-                <span className="text-foreground font-bold text-2xl">
-                  {tradeCount.toLocaleString()}
-                </span>{" "}
-                total
+                {tradeCount.toLocaleString()} total
               </span>
             )}
           </div>

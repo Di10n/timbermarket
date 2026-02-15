@@ -146,6 +146,7 @@ export default async function Home() {
           .select("market_id, probability, created_at")
           .in("market_id", marketIds)
           .order("created_at", { ascending: true })
+          .limit(10000)
       : { data: [] },
     marketIds.length > 0
       ? supabase
