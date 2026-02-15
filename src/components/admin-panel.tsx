@@ -123,10 +123,13 @@ function FeaturedMarketForm({
 }
 
 function CreateMarketForm() {
+  const [marketType, setMarketType] = useState<"binary" | "multi">("binary");
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
   const [probability, setProbability] = useState(50);
   const [ante, setAnte] = useState("3000");
+  const [outcomesInput, setOutcomesInput] = useState("");
+  const [liquidityPerOutcome, setLiquidityPerOutcome] = useState("1000");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -137,15 +140,42 @@ function CreateMarketForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/create-market", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      let body: Record<string, unknown>;
+
+      if (marketType === "binary") {
+        body = {
+          marketType: "binary",
           question,
           description: description || undefined,
           initialProbability: probability / 100,
           ante: parseFloat(ante),
-        }),
+        };
+      } else {
+        // Multi-resolution market
+        const outcomes = outcomesInput
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+
+        if (outcomes.length < 2 || outcomes.length > 10) {
+          setMessage("Must have 2-10 outcomes");
+          setLoading(false);
+          return;
+        }
+
+        body = {
+          marketType: "multi",
+          question,
+          description: description || undefined,
+          outcomes,
+          liquidityPerOutcome: parseFloat(liquidityPerOutcome),
+        };
+      }
+
+      const res = await fetch("/api/admin/create-market", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -161,6 +191,8 @@ function CreateMarketForm() {
       setDescription("");
       setProbability(50);
       setAnte("3000");
+      setOutcomesInput("");
+      setLiquidityPerOutcome("1000");
       router.refresh();
     } catch {
       setMessage("Something went wrong");
@@ -175,12 +207,36 @@ function CreateMarketForm() {
 
       <form onSubmit={handleCreate} className="space-y-4">
         <div>
+          <label className="block text-sm text-muted mb-1">Market Type</label>
+          <div className="grid grid-cols-2 gap-2">
+            {(["binary", "multi"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setMarketType(type)}
+                className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
+                  marketType === type
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "border-border text-muted hover:text-foreground"
+                }`}
+              >
+                {type === "binary" ? "Binary (YES/NO)" : "Multi-Resolution"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <label className="block text-sm text-muted mb-1">Question</label>
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Will X happen by Y date?"
+            placeholder={
+              marketType === "binary"
+                ? "Will X happen by Y date?"
+                : "Which team will win?"
+            }
             className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
             required
           />
@@ -198,36 +254,72 @@ function CreateMarketForm() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm text-muted mb-1">
-            Initial Probability: {probability}%
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="99"
-            value={probability}
-            onChange={(e) => setProbability(parseInt(e.target.value))}
-            className="w-full accent-accent"
-          />
-          <div className="flex justify-between text-xs text-muted">
-            <span>1%</span>
-            <span>99%</span>
-          </div>
-        </div>
+        {marketType === "binary" ? (
+          <>
+            <div>
+              <label className="block text-sm text-muted mb-1">
+                Initial Probability: {probability}%
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="99"
+                value={probability}
+                onChange={(e) => setProbability(parseInt(e.target.value))}
+                className="w-full accent-accent"
+              />
+              <div className="flex justify-between text-xs text-muted">
+                <span>1%</span>
+                <span>99%</span>
+              </div>
+            </div>
 
-        <div>
-          <label className="block text-sm text-muted mb-1">
-            Initial Liquidity (<LeafIcon />)
-          </label>
-          <input
-            type="number"
-            value={ante}
-            onChange={(e) => setAnte(e.target.value)}
-            min="10"
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
-          />
-        </div>
+            <div>
+              <label className="block text-sm text-muted mb-1">
+                Initial Liquidity (<LeafIcon />)
+              </label>
+              <input
+                type="number"
+                value={ante}
+                onChange={(e) => setAnte(e.target.value)}
+                min="10"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="block text-sm text-muted mb-1">
+                Outcomes (2-10, comma-separated)
+              </label>
+              <input
+                type="text"
+                value={outcomesInput}
+                onChange={(e) => setOutcomesInput(e.target.value)}
+                placeholder="OpenAI, Anthropic, NVIDIA, Google"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
+                required
+              />
+              <p className="text-xs text-muted mt-1">
+                Equal initial probabilities
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-muted mb-1">
+                Liquidity per outcome (<LeafIcon />)
+              </label>
+              <input
+                type="number"
+                value={liquidityPerOutcome}
+                onChange={(e) => setLiquidityPerOutcome(e.target.value)}
+                min="10"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
+              />
+            </div>
+          </>
+        )}
 
         {message && (
           <p
@@ -259,6 +351,8 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
   const [message, setMessage] = useState("");
   const router = useRouter();
 
+  const selectedMarketData = markets.find((m) => m.id === selectedMarket);
+
   async function handleResolve(e: React.FormEvent) {
     e.preventDefault();
     setMessage("");
@@ -270,8 +364,10 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
 
     setLoading(true);
 
-    const resolveValue =
-      resolution === "PERCENT" ? (parseFloat(customPct) / 100).toString() : resolution;
+    let resolveValue = resolution;
+    if (selectedMarketData?.market_type === "binary" && resolution === "PERCENT") {
+      resolveValue = (parseFloat(customPct) / 100).toString();
+    }
 
     try {
       const res = await fetch("/api/admin/resolve-market", {
@@ -293,6 +389,7 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
 
       setMessage("Market resolved!");
       setSelectedMarket("");
+      setResolution("YES");
       router.refresh();
     } catch {
       setMessage("Something went wrong");
@@ -313,55 +410,80 @@ function ResolveMarketForm({ markets }: { markets: Market[] }) {
             <label className="block text-sm text-muted mb-1">Market</label>
             <select
               value={selectedMarket}
-              onChange={(e) => setSelectedMarket(e.target.value)}
+              onChange={(e) => {
+                setSelectedMarket(e.target.value);
+                setResolution("YES");
+              }}
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent"
             >
               <option value="">Select a market...</option>
               {markets.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.question} ({formatProbability(m.probability)})
+                  {m.question} [{m.market_type === "binary" ? "Binary" : "Multi"}]
                 </option>
               ))}
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm text-muted mb-1">Resolution</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["YES", "NO", "N/A", "PERCENT"] as const).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setResolution(opt)}
-                  className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
-                    resolution === opt
-                      ? opt === "YES"
-                        ? "border-yes bg-yes/10 text-yes"
-                        : opt === "NO"
-                          ? "border-no bg-no/10 text-no"
-                          : "border-accent bg-accent/10 text-accent"
-                      : "border-border text-muted hover:text-foreground"
-                  }`}
-                >
-                  {opt === "PERCENT" ? "%" : opt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {resolution === "PERCENT" && (
+          {selectedMarketData && (
             <div>
-              <label className="block text-sm text-muted mb-1">
-                Percentage: {customPct}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={customPct}
-                onChange={(e) => setCustomPct(e.target.value)}
-                className="w-full accent-accent"
-              />
+              <label className="block text-sm text-muted mb-1">Resolution</label>
+              {selectedMarketData.market_type === "binary" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["YES", "NO", "N/A", "PERCENT"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setResolution(opt)}
+                        className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
+                          resolution === opt
+                            ? opt === "YES"
+                              ? "border-yes bg-yes/10 text-yes"
+                              : opt === "NO"
+                                ? "border-no bg-no/10 text-no"
+                                : "border-accent bg-accent/10 text-accent"
+                            : "border-border text-muted hover:text-foreground"
+                        }`}
+                      >
+                        {opt === "PERCENT" ? "%" : opt}
+                      </button>
+                    ))}
+                  </div>
+                  {resolution === "PERCENT" && (
+                    <div className="mt-3">
+                      <label className="block text-sm text-muted mb-1">
+                        Percentage: {customPct}%
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={customPct}
+                        onChange={(e) => setCustomPct(e.target.value)}
+                        className="w-full accent-accent"
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {[...(selectedMarketData.outcomes || []), "N/A"].map((outcome) => (
+                    <button
+                      key={outcome}
+                      type="button"
+                      onClick={() => setResolution(outcome)}
+                      className={`py-2 text-sm font-medium rounded-lg border transition-colors ${
+                        resolution === outcome
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {outcome}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

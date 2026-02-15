@@ -39,6 +39,17 @@ export async function POST(request: Request) {
 
   const serviceClient = await createServiceClient();
 
+  // Fetch market to determine type
+  const { data: market } = await serviceClient
+    .from("markets")
+    .select("market_type")
+    .eq("id", marketId)
+    .single();
+
+  if (!market) {
+    return NextResponse.json({ error: "Market not found" }, { status: 404 });
+  }
+
   if (type === "BUY") {
     if (!amount || amount <= 0) {
       return NextResponse.json(
@@ -47,18 +58,34 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data, error } = await serviceClient.rpc("execute_trade", {
-      p_user_id: user.id,
-      p_market_id: marketId,
-      p_outcome: outcome,
-      p_amount: amount,
-    });
+    if (market.market_type === "binary") {
+      const { data, error } = await serviceClient.rpc("execute_trade", {
+        p_user_id: user.id,
+        p_market_id: marketId,
+        p_outcome: outcome,
+        p_amount: amount,
+      });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ data });
+    } else {
+      // Multi-resolution market
+      const { data, error } = await serviceClient.rpc("execute_trade_multi", {
+        p_user_id: user.id,
+        p_market_id: marketId,
+        p_outcome: outcome,
+        p_amount: amount,
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ data });
     }
-
-    return NextResponse.json({ data });
   } else if (type === "SELL") {
     if (!shares || shares <= 0) {
       return NextResponse.json(
@@ -67,36 +94,68 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch the user's actual position to clamp shares (avoids floating-point mismatch)
-    const { data: position } = await serviceClient
-      .from("positions")
-      .select("yes_shares, no_shares")
-      .eq("user_id", user.id)
-      .eq("market_id", marketId)
-      .single();
+    if (market.market_type === "binary") {
+      // Fetch the user's actual position to clamp shares (avoids floating-point mismatch)
+      const { data: position } = await serviceClient
+        .from("positions")
+        .select("yes_shares, no_shares")
+        .eq("user_id", user.id)
+        .eq("market_id", marketId)
+        .single();
 
-    let clampedShares = shares;
-    if (position) {
-      const available =
-        outcome === "YES" ? position.yes_shares : position.no_shares;
-      // If the requested amount is close to or exceeds available, use the exact DB value
-      if (shares >= available || Math.abs(shares - available) < 0.01) {
-        clampedShares = available;
+      let clampedShares = shares;
+      if (position) {
+        const available =
+          outcome === "YES" ? position.yes_shares : position.no_shares;
+        // If the requested amount is close to or exceeds available, use the exact DB value
+        if (shares >= available || Math.abs(shares - available) < 0.01) {
+          clampedShares = available;
+        }
       }
+
+      const { data, error } = await serviceClient.rpc("execute_sell", {
+        p_user_id: user.id,
+        p_market_id: marketId,
+        p_outcome: outcome,
+        p_shares: clampedShares,
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ data });
+    } else {
+      // Multi-resolution market
+      const { data: position } = await serviceClient
+        .from("positions")
+        .select("shares_by_outcome")
+        .eq("user_id", user.id)
+        .eq("market_id", marketId)
+        .single();
+
+      let clampedShares = shares;
+      if (position && position.shares_by_outcome) {
+        const available = position.shares_by_outcome[outcome] || 0;
+        // If the requested amount is close to or exceeds available, use the exact DB value
+        if (shares >= available || Math.abs(shares - available) < 0.01) {
+          clampedShares = available;
+        }
+      }
+
+      const { data, error } = await serviceClient.rpc("execute_sell_multi", {
+        p_user_id: user.id,
+        p_market_id: marketId,
+        p_outcome: outcome,
+        p_shares: clampedShares,
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ data });
     }
-
-    const { data, error } = await serviceClient.rpc("execute_sell", {
-      p_user_id: user.id,
-      p_market_id: marketId,
-      p_outcome: outcome,
-      p_shares: clampedShares,
-    });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ data });
   }
 
   return NextResponse.json({ error: "Invalid trade type" }, { status: 400 });

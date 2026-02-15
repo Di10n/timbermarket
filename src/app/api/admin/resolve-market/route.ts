@@ -33,30 +33,65 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate resolution
-  const validResolutions = ["YES", "NO", "N/A"];
-  const isPercentage =
-    !validResolutions.includes(resolution) &&
-    !isNaN(parseFloat(resolution)) &&
-    parseFloat(resolution) >= 0 &&
-    parseFloat(resolution) <= 1;
-
-  if (!validResolutions.includes(resolution) && !isPercentage) {
-    return NextResponse.json(
-      { error: "Resolution must be YES, NO, N/A, or a number between 0 and 1" },
-      { status: 400 }
-    );
-  }
-
   const serviceClient = await createServiceClient();
-  const { error } = await serviceClient.rpc("resolve_market", {
-    p_market_id: marketId,
-    p_resolution: resolution,
-  });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // Fetch market to determine type
+  const { data: market } = await serviceClient
+    .from("markets")
+    .select("market_type, outcomes")
+    .eq("id", marketId)
+    .single();
+
+  if (!market) {
+    return NextResponse.json({ error: "Market not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ success: true });
+  if (market.market_type === "binary") {
+    // Validate resolution for binary markets
+    const validResolutions = ["YES", "NO", "N/A"];
+    const isPercentage =
+      !validResolutions.includes(resolution) &&
+      !isNaN(parseFloat(resolution)) &&
+      parseFloat(resolution) >= 0 &&
+      parseFloat(resolution) <= 1;
+
+    if (!validResolutions.includes(resolution) && !isPercentage) {
+      return NextResponse.json(
+        { error: "Resolution must be YES, NO, N/A, or a number between 0 and 1" },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await serviceClient.rpc("resolve_market", {
+      p_market_id: marketId,
+      p_resolution: resolution,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } else {
+    // Multi-resolution market
+    // Validate resolution is one of the outcomes or N/A
+    const validOutcomes = [...(market.outcomes || []), "N/A"];
+    if (!validOutcomes.includes(resolution)) {
+      return NextResponse.json(
+        { error: `Resolution must be one of: ${validOutcomes.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await serviceClient.rpc("resolve_market_multi", {
+      p_market_id: marketId,
+      p_winning_outcome: resolution,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  }
 }
