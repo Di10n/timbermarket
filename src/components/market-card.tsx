@@ -147,8 +147,7 @@ export default function MarketCard({
   // Multi-resolution market display
   const probs = market.outcome_pools ? getFpmmProbabilities(market.outcome_pools) : {};
   const sortedOutcomes = Object.entries(probs)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3);
+    .sort(([, a], [, b]) => b - a);
 
   const handleOutcomeClick = (e: React.MouseEvent, outcome: string) => {
     e.preventDefault();
