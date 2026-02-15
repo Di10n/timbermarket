@@ -3,7 +3,7 @@ export function formatProbability(prob: number): string {
 }
 
 export function formatLeaves(amount: number): string {
-  return Math.round(amount).toLocaleString();
+  return Math.floor(amount).toLocaleString();
 }
 
 export function formatShares(shares: number): string {

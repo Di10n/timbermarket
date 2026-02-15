@@ -331,7 +331,7 @@ export default function TVPage() {
             </h2>
             {tradeCount != null && (
               <span className="text-muted text-base tabular-nums">
-                <span className="text-foreground font-bold text-2xl font-[family-name:var(--font-gaegu)]">
+                <span className="text-foreground font-bold text-2xl">
                   {tradeCount.toLocaleString()}
                 </span>{" "}
                 total
