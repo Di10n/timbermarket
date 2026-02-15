@@ -150,14 +150,23 @@ export function calculateSellPayout(
   // Calculate target product for non-target pools: k / newTargetPool
   const targetProduct = k / newTargetPool;
 
+  // Find minimum pool to limit upper bound
+  let minPool = Infinity;
+  for (const o of outcomes) {
+    if (o !== outcome && pools[o] < minPool) {
+      minPool = pools[o];
+    }
+  }
+
   // Binary search for payout P
   let low = 0;
-  let high = pools[outcome] * 10; // Upper bound
+  let high = minPool * (n - 1) * 0.99; // Can't remove more than smallest pool
   const epsilon = 0.0001;
   const maxIterations = 100;
 
   let iterations = 0;
   let bestPayout = 0;
+  let bestDiff = Infinity;
 
   while (high - low > epsilon && iterations < maxIterations) {
     const mid = (low + high) / 2;
@@ -180,10 +189,18 @@ export function calculateSellPayout(
     if (!valid) {
       // Removing too much, reduce high
       high = mid;
+      iterations++;
       continue;
     }
 
-    if (Math.abs(testProduct - targetProduct) < epsilon) {
+    // Track best solution
+    const diff = Math.abs(testProduct - targetProduct);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestPayout = mid;
+    }
+
+    if (diff < epsilon) {
       bestPayout = mid;
       break;
     }
@@ -196,7 +213,6 @@ export function calculateSellPayout(
       high = mid;
     }
 
-    bestPayout = mid;
     iterations++;
   }
 
@@ -238,11 +254,20 @@ function calculateSellPools(
   // Calculate target product
   const targetProduct = k / newTargetPool;
 
+  // Find minimum pool to limit upper bound
+  let minPool = Infinity;
+  for (const o of outcomes) {
+    if (o !== outcome && pools[o] < minPool) {
+      minPool = pools[o];
+    }
+  }
+
   // Binary search for payout
   let low = 0;
-  let high = pools[outcome] * 10;
+  let high = minPool * (n - 1) * 0.99;
   const epsilon = 0.0001;
   let bestPayout = 0;
+  let bestDiff = Infinity;
 
   for (let i = 0; i < 100; i++) {
     const mid = (low + high) / 2;
@@ -266,7 +291,13 @@ function calculateSellPools(
       continue;
     }
 
-    if (Math.abs(testProduct - targetProduct) < epsilon) {
+    const diff = Math.abs(testProduct - targetProduct);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestPayout = mid;
+    }
+
+    if (diff < epsilon) {
       bestPayout = mid;
       break;
     }
@@ -276,8 +307,6 @@ function calculateSellPools(
     } else {
       high = mid;
     }
-
-    bestPayout = mid;
   }
 
   // Build new pools
