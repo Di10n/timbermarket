@@ -18,13 +18,21 @@ export async function POST() {
   }
 
   const serviceClient = await createServiceClient();
+
+  // Check if user is already approved to avoid resetting their balance
+  const { data: profile } = await serviceClient
+    .from("profiles")
+    .select("is_approved")
+    .eq("id", user.id)
+    .single();
+
+  const updateData = profile?.is_approved
+    ? { phone_number: "dev-bypass" }
+    : { is_approved: true, balance: 1000, phone_number: "dev-bypass" };
+
   const { error: updateError } = await serviceClient
     .from("profiles")
-    .update({
-      is_approved: true,
-      balance: 1000,
-      phone_number: "dev-bypass",
-    })
+    .update(updateData)
     .eq("id", user.id);
 
   if (updateError) {

@@ -61,6 +61,21 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Redirect approved users away from /verify (nothing to do there)
+  if (user && pathname === "/verify") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_approved")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.is_approved) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Check approval for authenticated users accessing protected routes
   if (user && isProtectedRoute) {
     const { data: profile } = await supabase

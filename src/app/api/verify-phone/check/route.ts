@@ -51,15 +51,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Approve user: set is_approved, grant 1000 leaves, store phone number
     const serviceClient = await createServiceClient();
+
+    // Check if user is already approved to avoid resetting their balance
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("is_approved")
+      .eq("id", user.id)
+      .single();
+
+    const updateData = profile?.is_approved
+      ? { phone_number: phoneNumber }
+      : { is_approved: true, balance: 1000, phone_number: phoneNumber };
+
     const { error: updateError } = await serviceClient
       .from("profiles")
-      .update({
-        is_approved: true,
-        balance: 1000,
-        phone_number: phoneNumber,
-      })
+      .update(updateData)
       .eq("id", user.id);
 
     if (updateError) {
