@@ -4,6 +4,7 @@ import TradePanel from "@/components/trade-panel";
 import ProbabilityChart from "@/components/probability-chart";
 import RecentTrades from "@/components/recent-trades";
 import MarketComments from "@/components/market-comments";
+import MultiResolutionMarket from "@/components/multi-resolution-market";
 import { formatProbability, timeAgo, formatLeaves } from "@/lib/utils";
 import type { Market, Position, Trade, CommentWithProfile } from "@/lib/types";
 
@@ -28,6 +29,9 @@ export default async function MarketPage({
 
   if (!market) notFound();
 
+  const typedMarket = market as Market;
+  const isBinary = typedMarket.market_type === "binary";
+
   // Fetch user's position, probability history, recent trades, comments, and profile in parallel
   const [positionResult, historyResult, tradesResult, commentsResult, profileResult, traderCountResult] =
     await Promise.all([
@@ -41,7 +45,7 @@ export default async function MarketPage({
         : { data: null },
       supabase
         .from("probability_history")
-        .select("probability, created_at")
+        .select(isBinary ? "probability, created_at" : "probability_distribution, created_at")
         .eq("market_id", id)
         .order("created_at", { ascending: true })
         .limit(10000),
@@ -72,7 +76,6 @@ export default async function MarketPage({
         .or("yes_shares.gt.0,no_shares.gt.0"),
     ]);
 
-  const typedMarket = market as Market;
   const position = positionResult.data as Position | null;
   const profileData = profileResult.data as { balance: number; is_admin: boolean } | null;
   const balance = profileData?.balance ?? 0;
@@ -100,6 +103,24 @@ export default async function MarketPage({
         positions: posMap[c.user_id] ?? null,
       }));
     }
+  }
+
+  // If multi-resolution market, use different layout
+  if (!isBinary) {
+    return (
+      <MultiResolutionMarket
+        market={typedMarket}
+        position={position}
+        balance={balance}
+        isLoggedIn={!!user}
+        historyData={historyResult.data ?? []}
+        comments={commentsWithPositions}
+        trades={(tradesResult.data ?? []) as (Trade & { profiles?: { username: string } })[]}
+        traderCount={traderCount}
+        isAdmin={profileData?.is_admin ?? false}
+        currentUserId={user?.id}
+      />
+    );
   }
 
   return (

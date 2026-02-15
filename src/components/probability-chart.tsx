@@ -232,10 +232,17 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
 
   return (
     <div className="bg-card border border-border rounded-lg p-4">
-      <h3 className="text-sm text-muted mb-3">Probability</h3>
       <div style={{ width: '100%', height: '320px', minHeight: '320px', paddingBottom: '10px' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 10, left: -5, bottom: 15 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 30, left: -5, bottom: 15 }}>
+            <defs>
+              {outcomes.map((outcome, idx) => (
+                <linearGradient key={`gradient-${outcome}`} id={`gradient-${outcome}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={OUTCOME_COLORS[idx % OUTCOME_COLORS.length]} stopOpacity={0.1} />
+                  <stop offset="95%" stopColor={OUTCOME_COLORS[idx % OUTCOME_COLORS.length]} stopOpacity={0} />
+                </linearGradient>
+              ))}
+            </defs>
             <XAxis
               dataKey="time"
               type="number"
@@ -255,7 +262,7 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
                   });
                 }
               }}
-              stroke="var(--color-muted)"
+              stroke="var(--color-border)"
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -295,9 +302,11 @@ export default function ProbabilityChart({ data, resolvedAt }: ProbabilityChartP
                 type="monotone"
                 dataKey={outcome}
                 stroke={OUTCOME_COLORS[idx % OUTCOME_COLORS.length]}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 dot={false}
+                activeDot={{ r: 4 }}
                 name={outcome}
+                isAnimationActive={false}
               />
             ))}
           </LineChart>
