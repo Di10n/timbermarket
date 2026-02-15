@@ -8,6 +8,11 @@ import {
   calculateSellPayout,
   getProbabilityAfterSell,
 } from "@/lib/amm";
+import {
+  calculateBuyShares as calculateBuySharesFpmm,
+  calculateSellPayout as calculateSellPayoutFpmm,
+  getFpmmProbabilities,
+} from "@/lib/fpmm";
 import { formatProbability, formatShares, formatLeaves } from "@/lib/utils";
 import type { Market, Position } from "@/lib/types";
 import LeafIcon from "@/components/leaf-icon";
@@ -27,10 +32,18 @@ export default function TradePanel({
 }: TradePanelProps) {
   const searchParams = useSearchParams();
   const outcomeParam = searchParams.get("outcome");
-  const initialOutcome = (outcomeParam === "YES" || outcomeParam === "NO") ? outcomeParam : "YES";
+
+  // Determine initial outcome based on market type
+  const isBinary = market.market_type === "binary";
+  const availableOutcomes = isBinary
+    ? ["YES", "NO"]
+    : (market.outcomes || []);
+  const initialOutcome = availableOutcomes.includes(outcomeParam || "")
+    ? outcomeParam!
+    : availableOutcomes[0];
 
   const [mode, setMode] = useState<"BUY" | "SELL">("BUY");
-  const [outcome, setOutcome] = useState<"YES" | "NO">(initialOutcome);
+  const [outcome, setOutcome] = useState<string>(initialOutcome);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,64 +51,102 @@ export default function TradePanel({
 
   // Update outcome when URL parameter changes
   useEffect(() => {
-    if (outcomeParam === "YES" || outcomeParam === "NO") {
-      setOutcome(outcomeParam);
+    if (availableOutcomes.includes(outcomeParam || "")) {
+      setOutcome(outcomeParam!);
     }
-  }, [outcomeParam]);
+  }, [outcomeParam, availableOutcomes]);
 
   const numAmount = parseFloat(amount) || 0;
   const isActive = market.status === "active";
 
+  // Get current probabilities for multi markets
+  const currentProbs = isBinary
+    ? { YES: market.probability, NO: 1 - market.probability }
+    : market.outcome_pools
+      ? getFpmmProbabilities(market.outcome_pools)
+      : {};
+
   // Calculate preview
   let previewShares = 0;
-  let previewProb = market.probability;
+  let previewProb = isBinary ? market.probability : (currentProbs[outcome] || 0);
   let previewPayout = 0;
   let previewRedeemed = 0;
 
   if (numAmount > 0 && isActive) {
     if (mode === "BUY") {
-      previewShares = calculateBuyShares(
-        market.pool_yes,
-        market.pool_no,
-        market.p,
-        numAmount,
-        outcome
-      );
-      previewProb = getProbabilityAfterBuy(
-        market.pool_yes,
-        market.pool_no,
-        market.p,
-        numAmount,
-        outcome
-      );
-      // Account for auto-redemption of offsetting positions
-      const existingOpposite = outcome === "YES"
-        ? (position?.no_shares ?? 0)
-        : (position?.yes_shares ?? 0);
-      previewRedeemed = Math.min(previewShares, existingOpposite);
-      previewPayout = previewShares - previewRedeemed;
+      if (isBinary) {
+        previewShares = calculateBuyShares(
+          market.pool_yes,
+          market.pool_no,
+          market.p,
+          numAmount,
+          outcome
+        );
+        previewProb = getProbabilityAfterBuy(
+          market.pool_yes,
+          market.pool_no,
+          market.p,
+          numAmount,
+          outcome
+        );
+        // Account for auto-redemption of offsetting positions
+        const existingOpposite = outcome === "YES"
+          ? (position?.no_shares ?? 0)
+          : (position?.yes_shares ?? 0);
+        previewRedeemed = Math.min(previewShares, existingOpposite);
+        previewPayout = previewShares - previewRedeemed;
+      } else {
+        // Multi-resolution market
+        if (market.outcome_pools) {
+          const result = calculateBuySharesFpmm(
+            market.outcome_pools,
+            numAmount,
+            outcome
+          );
+          previewShares = result.shares;
+          const newProbs = getFpmmProbabilities(result.newPools);
+          previewProb = newProbs[outcome];
+          previewPayout = previewShares; // No auto-redemption for multi markets
+        }
+      }
     } else {
-      const maxShares =
-        outcome === "YES"
-          ? position?.yes_shares ?? 0
-          : position?.no_shares ?? 0;
-      const sharesToSell = Math.min(numAmount, maxShares);
-      if (sharesToSell > 0) {
-        previewPayout = calculateSellPayout(
-          market.pool_yes,
-          market.pool_no,
-          market.p,
-          sharesToSell,
-          outcome
-        );
-        previewProb = getProbabilityAfterSell(
-          market.pool_yes,
-          market.pool_no,
-          market.p,
-          sharesToSell,
-          outcome
-        );
-        previewShares = sharesToSell;
+      if (isBinary) {
+        const maxShares =
+          outcome === "YES"
+            ? position?.yes_shares ?? 0
+            : position?.no_shares ?? 0;
+        const sharesToSell = Math.min(numAmount, maxShares);
+        if (sharesToSell > 0) {
+          previewPayout = calculateSellPayout(
+            market.pool_yes,
+            market.pool_no,
+            market.p,
+            sharesToSell,
+            outcome
+          );
+          previewProb = getProbabilityAfterSell(
+            market.pool_yes,
+            market.pool_no,
+            market.p,
+            sharesToSell,
+            outcome
+          );
+          previewShares = sharesToSell;
+        }
+      } else {
+        // Multi-resolution market
+        const maxShares = position?.shares_by_outcome?.[outcome] ?? 0;
+        const sharesToSell = Math.min(numAmount, maxShares);
+        if (sharesToSell > 0 && market.outcome_pools) {
+          previewPayout = calculateSellPayoutFpmm(
+            market.outcome_pools,
+            sharesToSell,
+            outcome
+          );
+          // Calculate new probability after sell (inverse of buy)
+          previewShares = sharesToSell;
+          previewProb = currentProbs[outcome]; // Simplified, actual calc is complex
+        }
       }
     }
   }
@@ -122,10 +173,11 @@ export default function TradePanel({
         body.amount = numAmount;
       } else {
         // Clamp to available shares to avoid floating-point mismatch with DB
-        const available =
-          outcome === "YES"
-            ? position?.yes_shares ?? 0
-            : position?.no_shares ?? 0;
+        const available = isBinary
+          ? (outcome === "YES"
+              ? position?.yes_shares ?? 0
+              : position?.no_shares ?? 0)
+          : (position?.shares_by_outcome?.[outcome] ?? 0);
         const sharesToSell =
           Math.abs(numAmount - available) < 0.01 ? available : Math.min(numAmount, available);
         body.shares = sharesToSell;
@@ -159,8 +211,9 @@ export default function TradePanel({
     }
   }
 
-  const hasPosition =
-    position && (position.yes_shares > 0 || position.no_shares > 0);
+  const hasPosition = isBinary
+    ? position && (position.yes_shares > 0 || position.no_shares > 0)
+    : position && position.shares_by_outcome && Object.values(position.shares_by_outcome).some(s => s > 0);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 h-full">
@@ -196,27 +249,45 @@ export default function TradePanel({
       </div>
 
       {/* Outcome toggle */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setOutcome("YES")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
-            outcome === "YES"
-              ? "border-yes bg-yes/10 text-yes"
-              : "border-border text-muted hover:text-foreground"
-          }`}
-        >
-          Yes {formatProbability(market.probability)}
-        </button>
-        <button
-          onClick={() => setOutcome("NO")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
-            outcome === "NO"
-              ? "border-no bg-no/10 text-no"
-              : "border-border text-muted hover:text-foreground"
-          }`}
-        >
-          No {formatProbability(1 - market.probability)}
-        </button>
+      <div className={`gap-2 mb-4 ${isBinary ? "flex" : "grid grid-cols-2"}`}>
+        {isBinary ? (
+          <>
+            <button
+              onClick={() => setOutcome("YES")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                outcome === "YES"
+                  ? "border-yes bg-yes/10 text-yes"
+                  : "border-border text-muted hover:text-foreground"
+              }`}
+            >
+              Yes {formatProbability(market.probability)}
+            </button>
+            <button
+              onClick={() => setOutcome("NO")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                outcome === "NO"
+                  ? "border-no bg-no/10 text-no"
+                  : "border-border text-muted hover:text-foreground"
+              }`}
+            >
+              No {formatProbability(1 - market.probability)}
+            </button>
+          </>
+        ) : (
+          availableOutcomes.map((opt, idx) => (
+            <button
+              key={opt}
+              onClick={() => setOutcome(opt)}
+              className={`py-2 px-3 text-sm font-medium rounded-lg border transition-colors ${
+                outcome === opt
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border text-muted hover:text-foreground"
+              }`}
+            >
+              {opt} {formatProbability(currentProbs[opt] || 0)}
+            </button>
+          ))
+        )}
       </div>
 
       {/* Amount input */}
@@ -241,7 +312,11 @@ export default function TradePanel({
         )}
         {mode === "SELL" && position && (
           <p className="text-xs text-muted mt-1">
-            Available: {formatShares(outcome === "YES" ? position.yes_shares : position.no_shares)} shares
+            Available: {formatShares(
+              isBinary
+                ? (outcome === "YES" ? position.yes_shares : position.no_shares)
+                : (position.shares_by_outcome?.[outcome] ?? 0)
+            )} shares
           </p>
         )}
       </div>
@@ -253,9 +328,9 @@ export default function TradePanel({
             <>
               <div className="flex justify-between">
                 <span className="text-muted">Shares</span>
-                <span>{formatShares(previewShares - previewRedeemed)}</span>
+                <span>{formatShares(isBinary ? previewShares - previewRedeemed : previewShares)}</span>
               </div>
-              {previewRedeemed > 0 && (
+              {isBinary && previewRedeemed > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted">Auto-redeemed</span>
                   <span className="text-yes">
@@ -264,7 +339,7 @@ export default function TradePanel({
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted">Potential payout</span>
+                <span className="text-muted">Value if wins</span>
                 <span className="text-yes">
                   {formatLeaves(previewPayout)} <LeafIcon />
                 </span>
@@ -302,9 +377,11 @@ export default function TradePanel({
           (mode === "BUY" && numAmount > balance)
         }
         className={`w-full py-2.5 font-medium rounded-lg transition-colors disabled:opacity-50 ${
-          outcome === "YES"
+          isBinary && outcome === "YES"
             ? "bg-yes hover:bg-yes/90 text-background"
-            : "bg-no hover:bg-no/90 text-white"
+            : isBinary && outcome === "NO"
+              ? "bg-no hover:bg-no/90 text-white"
+              : "bg-accent hover:bg-accent-hover text-background"
         }`}
       >
         {loading
@@ -320,22 +397,36 @@ export default function TradePanel({
       {hasPosition && (
         <div className="mt-4 pt-4 border-t border-border">
           <p className="text-xs text-muted mb-2">Your position</p>
-          <div className="flex gap-4 text-sm">
-            {position!.yes_shares > 0 && (
-              <div>
-                <span className="text-yes">
-                  {formatShares(position!.yes_shares)} YES
-                </span>
-              </div>
-            )}
-            {position!.no_shares > 0 && (
-              <div>
-                <span className="text-no">
-                  {formatShares(position!.no_shares)} NO
-                </span>
-              </div>
-            )}
-          </div>
+          {isBinary ? (
+            <div className="flex gap-4 text-sm">
+              {position!.yes_shares > 0 && (
+                <div>
+                  <span className="text-yes">
+                    {formatShares(position!.yes_shares)} YES
+                  </span>
+                </div>
+              )}
+              {position!.no_shares > 0 && (
+                <div>
+                  <span className="text-no">
+                    {formatShares(position!.no_shares)} NO
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {Object.entries(position!.shares_by_outcome || {})
+                .filter(([_, shares]) => shares > 0)
+                .map(([outcome, shares]) => (
+                  <div key={outcome}>
+                    <span className="text-accent">
+                      {formatShares(shares)} {outcome}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
     </div>
