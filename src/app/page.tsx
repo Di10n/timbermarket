@@ -7,6 +7,7 @@ import RecentTrades from "@/components/recent-trades";
 import MarketCard from "@/components/market-card";
 import SuggestMarket from "@/components/suggest-market";
 import RecentComments from "@/components/recent-comments";
+import Footer from "@/components/footer";
 import type { Market, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -214,6 +215,7 @@ export default async function Home() {
         </div>
       </main>
 
+      <Footer />
     </div>
   );
 }

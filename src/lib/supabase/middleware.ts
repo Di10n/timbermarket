@@ -2,6 +2,33 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  // CSRF protection: reject mutating API requests from foreign origins
+  const method = request.method;
+  if (
+    request.nextUrl.pathname.startsWith("/api/") &&
+    method !== "GET" &&
+    method !== "HEAD" &&
+    method !== "OPTIONS"
+  ) {
+    const origin = request.headers.get("origin");
+    const host = request.headers.get("host");
+    if (origin) {
+      let originHost: string;
+      try {
+        originHost = new URL(origin).host;
+      } catch {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (originHost !== host) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else {
+      // No Origin header on a mutating request — block it.
+      // Legitimate same-origin fetch/XHR always sends Origin.
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
