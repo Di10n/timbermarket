@@ -5,7 +5,8 @@ import MarketCarouselCard from "@/components/market-carousel-card";
 import type { Market } from "@/lib/types";
 
 export interface ProbabilityPoint {
-  probability: number;
+  probability?: number;
+  probability_distribution?: Record<string, number>;
   created_at: string;
 }
 
