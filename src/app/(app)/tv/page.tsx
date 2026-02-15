@@ -90,7 +90,7 @@ export default function TVPage() {
           .limit(30),
         supabase
           .from("profiles")
-          .select("*", { count: "exact", head: true }),
+          .select("id", { count: "exact", head: true }),
         supabase
           .from("positions")
           .select("market_id"),
