@@ -58,6 +58,7 @@ export default function TVPage() {
   const [comments, setComments] = useState<CommentWithContext[]>([]);
   const [loading, setLoading] = useState(true);
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [tradeCount, setTradeCount] = useState<number | null>(null);
   const [countdown, setCountdown] = useState("");
   const [countdownDone, setCountdownDone] = useState(false);
   const [ambientLeaves, setAmbientLeaves] = useState<
@@ -70,7 +71,7 @@ export default function TVPage() {
     const supabase = supabaseRef.current;
     const since = new Date(Date.now() - RANKING_WINDOW).toISOString();
 
-    const [marketsRes, featuredRes, windowRes, feedRes, countRes, positionsRes, commentsRes] =
+    const [marketsRes, featuredRes, windowRes, feedRes, countRes, positionsRes, commentsRes, tradeCountRes] =
       await Promise.all([
         supabase.from("markets").select("*").eq("status", "active"),
         supabase
@@ -101,6 +102,10 @@ export default function TVPage() {
           .select("id, content, created_at, profiles(username), markets(question)")
           .order("created_at", { ascending: false })
           .limit(30),
+        supabase
+          .from("trades")
+          .select("id", { count: "exact", head: true })
+          .eq("is_rolled_back", false),
       ]);
 
     if (marketsRes.data) {
@@ -173,6 +178,10 @@ export default function TVPage() {
 
     if (countRes.count != null) {
       setUserCount(countRes.count);
+    }
+
+    if (tradeCountRes.count != null) {
+      setTradeCount(tradeCountRes.count);
     }
 
     setLoading(false);
@@ -316,10 +325,18 @@ export default function TVPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel: Recent trades */}
         <div className="w-1/4 flex flex-col overflow-hidden relative border-r border-border/50">
-          <div className="px-5 py-5 shrink-0 border-b border-border/50">
+          <div className="px-5 py-5 shrink-0 border-b border-border/50 flex items-center justify-between">
             <h2 className="text-lg font-bold uppercase tracking-widest text-muted">
               Recent Trades
             </h2>
+            {tradeCount != null && (
+              <span className="text-muted text-base tabular-nums">
+                <span className="text-foreground font-bold text-2xl font-[family-name:var(--font-gaegu)]">
+                  {tradeCount.toLocaleString()}
+                </span>{" "}
+                total
+              </span>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-hide relative tv-trades-fade">
             {trades.length === 0 ? (
