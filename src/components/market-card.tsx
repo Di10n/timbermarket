@@ -2,8 +2,22 @@
 
 import Link from "next/link";
 import { formatProbability, timeAgo, formatLeaves } from "@/lib/utils";
+import { getFpmmProbabilities } from "@/lib/fpmm";
 import type { Market } from "@/lib/types";
 import { useRouter } from "next/navigation";
+
+const OUTCOME_COLORS = [
+  "rgb(59, 130, 246)", // blue
+  "rgb(34, 197, 94)", // green
+  "rgb(168, 85, 247)", // purple
+  "rgb(251, 146, 60)", // orange
+  "rgb(239, 68, 68)", // red
+  "rgb(236, 72, 153)", // pink
+  "rgb(6, 182, 212)", // cyan
+  "rgb(250, 204, 21)", // yellow
+  "rgb(99, 102, 241)", // indigo
+  "rgb(20, 184, 166)", // teal
+];
 
 export default function MarketCard({
   market,
@@ -14,97 +28,183 @@ export default function MarketCard({
   traderCount?: number;
   commentCount?: number;
 }) {
-  const prob = market.probability;
-  const probPercent = Math.round(prob * 100);
   const router = useRouter();
-
   const isResolved = market.status === "resolved";
+  const isBinary = market.market_type === "binary";
 
-  const handleYesClick = (e: React.MouseEvent) => {
+  if (isBinary) {
+    // Binary market display (existing)
+    const prob = market.probability;
+    const probPercent = Math.round(prob * 100);
+
+    const handleYesClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isResolved) router.push(`/markets/${market.id}?outcome=YES`);
+    };
+
+    const handleNoClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isResolved) router.push(`/markets/${market.id}?outcome=NO`);
+    };
+
+    return (
+      <Link href={`/markets/${market.id}`}>
+        <div className={`bg-card border rounded-2xl p-6 hover:shadow-lg transition-all cursor-pointer ${isResolved ? "border-border/50" : "border-border hover:border-accent/30"}`}>
+          {/* Header with question and probability – greyed out for resolved */}
+          <div className={`flex items-start justify-between gap-4 mb-6 ${isResolved ? "opacity-40" : ""}`}>
+            <h3 className={`font-semibold text-lg leading-snug flex-1 line-clamp-2 ${isResolved ? "text-muted" : "text-foreground"}`}>
+              {market.question}
+            </h3>
+
+            {/* Circular probability display */}
+            <div className="flex flex-col items-center shrink-0">
+              <div className="relative w-20 h-20 flex items-center justify-center">
+                {/* Background circle */}
+                <div className="absolute inset-0 rounded-full border-4 border-border"></div>
+                {/* Progress circle */}
+                <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="36"
+                    fill="none"
+                    stroke={isResolved ? "rgb(107, 114, 128)" : prob >= 0.5 ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)"}
+                    strokeWidth="4"
+                    strokeDasharray={`${2 * Math.PI * 36}`}
+                    strokeDashoffset={`${2 * Math.PI * 36 * (1 - prob)}`}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                {/* Percentage text */}
+                <div className={`relative z-10 text-2xl font-bold ${isResolved ? "text-muted" : "text-foreground"}`}>
+                  {probPercent}%
+                </div>
+              </div>
+              <span className="text-xs text-muted mt-1">chance</span>
+            </div>
+          </div>
+
+          {/* YES/NO Buttons for active markets, Resolution banner for resolved */}
+          <div className="flex gap-3 mb-4">
+            {isResolved ? (
+              <div className={`flex-1 rounded-xl py-4 text-center border ${
+                market.resolution === "YES"
+                  ? "bg-yes/10 border-yes/30"
+                  : market.resolution === "NO"
+                    ? "bg-no/10 border-no/30"
+                    : "bg-muted/10 border-border"
+              }`}>
+                <span className="text-sm font-semibold uppercase tracking-wider text-muted">Resolved </span>
+                <span className={`text-lg font-bold ${
+                  market.resolution === "YES"
+                    ? "text-yes"
+                    : market.resolution === "NO"
+                      ? "text-no"
+                      : "text-foreground"
+                }`}>
+                  {market.resolution ?? "—"}
+                </span>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleYesClick}
+                  className="flex-1 bg-yes/10 hover:bg-yes/20 border border-yes/30 rounded-xl py-4 text-center transition-colors"
+                >
+                  <span className="text-yes font-semibold text-lg">Buy Yes</span>
+                </button>
+                <button
+                  onClick={handleNoClick}
+                  className="flex-1 bg-no/10 hover:bg-no/20 border border-no/30 rounded-xl py-4 text-center transition-colors"
+                >
+                  <span className="text-no font-semibold text-lg">Buy No</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Footer with volume, time, and comments */}
+          <div className={`flex items-center gap-3 text-sm text-muted truncate ${isResolved ? "opacity-40" : ""}`}>
+            <span className="font-medium shrink-0">{formatLeaves(market.volume)} Vol.</span>
+            {traderCount != null && (
+              <>
+                <span className="shrink-0">•</span>
+                <span className="shrink-0">{traderCount} {traderCount === 1 ? "trader" : "traders"}</span>
+              </>
+            )}
+            <span className="shrink-0">•</span>
+            <span className="shrink-0">{timeAgo(market.created_at)}</span>
+            <span className="shrink-0">•</span>
+            <span className="truncate">{commentCount} comment{commentCount !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  // Multi-resolution market display
+  const probs = market.outcome_pools ? getFpmmProbabilities(market.outcome_pools) : {};
+  const sortedOutcomes = Object.entries(probs)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
+
+  const handleOutcomeClick = (e: React.MouseEvent, outcome: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isResolved) router.push(`/markets/${market.id}?outcome=YES`);
-  };
-
-  const handleNoClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isResolved) router.push(`/markets/${market.id}?outcome=NO`);
+    if (!isResolved) router.push(`/markets/${market.id}?outcome=${encodeURIComponent(outcome)}`);
   };
 
   return (
     <Link href={`/markets/${market.id}`}>
       <div className={`bg-card border rounded-2xl p-6 hover:shadow-lg transition-all cursor-pointer ${isResolved ? "border-border/50" : "border-border hover:border-accent/30"}`}>
-        {/* Header with question and probability – greyed out for resolved */}
-        <div className={`flex items-start justify-between gap-4 mb-6 ${isResolved ? "opacity-40" : ""}`}>
-          <h3 className={`font-semibold text-lg leading-snug flex-1 line-clamp-2 ${isResolved ? "text-muted" : "text-foreground"}`}>
+        {/* Header with question */}
+        <div className={`mb-4 ${isResolved ? "opacity-40" : ""}`}>
+          <h3 className={`font-semibold text-lg leading-snug line-clamp-2 ${isResolved ? "text-muted" : "text-foreground"}`}>
             {market.question}
           </h3>
-
-          {/* Circular probability display */}
-          <div className="flex flex-col items-center shrink-0">
-            <div className="relative w-20 h-20 flex items-center justify-center">
-              {/* Background circle */}
-              <div className="absolute inset-0 rounded-full border-4 border-border"></div>
-              {/* Progress circle */}
-              <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  fill="none"
-                  stroke={isResolved ? "rgb(107, 114, 128)" : prob >= 0.5 ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)"}
-                  strokeWidth="4"
-                  strokeDasharray={`${2 * Math.PI * 36}`}
-                  strokeDashoffset={`${2 * Math.PI * 36 * (1 - prob)}`}
-                  className="transition-all duration-500"
-                />
-              </svg>
-              {/* Percentage text */}
-              <div className={`relative z-10 text-2xl font-bold ${isResolved ? "text-muted" : "text-foreground"}`}>
-                {probPercent}%
-              </div>
-            </div>
-            <span className="text-xs text-muted mt-1">chance</span>
-          </div>
         </div>
 
-        {/* YES/NO Buttons for active markets, Resolution banner for resolved */}
-        <div className="flex gap-3 mb-4">
+        {/* Top outcomes with probability bars */}
+        <div className="space-y-3 mb-4">
           {isResolved ? (
-            <div className={`flex-1 rounded-xl py-4 text-center border ${
-              market.resolution === "YES"
-                ? "bg-yes/10 border-yes/30"
-                : market.resolution === "NO"
-                  ? "bg-no/10 border-no/30"
-                  : "bg-muted/10 border-border"
+            <div className={`rounded-xl py-4 px-4 text-center border ${
+              market.resolution && market.resolution !== "N/A"
+                ? "bg-accent/10 border-accent/30"
+                : "bg-muted/10 border-border"
             }`}>
               <span className="text-sm font-semibold uppercase tracking-wider text-muted">Resolved </span>
-              <span className={`text-lg font-bold ${
-                market.resolution === "YES"
-                  ? "text-yes"
-                  : market.resolution === "NO"
-                    ? "text-no"
-                    : "text-foreground"
-              }`}>
+              <span className="text-lg font-bold text-accent">
                 {market.resolution ?? "—"}
               </span>
             </div>
           ) : (
-            <>
+            sortedOutcomes.map(([outcome, prob], idx) => (
               <button
-                onClick={handleYesClick}
-                className="flex-1 bg-yes/10 hover:bg-yes/20 border border-yes/30 rounded-xl py-4 text-center transition-colors"
+                key={outcome}
+                onClick={(e) => handleOutcomeClick(e, outcome)}
+                className="w-full text-left group"
               >
-                <span className="text-yes font-semibold text-lg">Buy Yes</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
+                    {outcome}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {formatProbability(prob)}
+                  </span>
+                </div>
+                <div className="h-2 bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full transition-all duration-500 group-hover:opacity-80"
+                    style={{
+                      width: `${prob * 100}%`,
+                      backgroundColor: OUTCOME_COLORS[idx % OUTCOME_COLORS.length],
+                    }}
+                  />
+                </div>
               </button>
-              <button
-                onClick={handleNoClick}
-                className="flex-1 bg-no/10 hover:bg-no/20 border border-no/30 rounded-xl py-4 text-center transition-colors"
-              >
-                <span className="text-no font-semibold text-lg">Buy No</span>
-              </button>
-            </>
+            ))
           )}
         </div>
 
