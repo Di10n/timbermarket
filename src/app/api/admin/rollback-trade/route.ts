@@ -34,6 +34,25 @@ export async function POST(request: Request) {
   }
 
   const serviceClient = await createServiceClient();
+
+  // Sort trades in reverse chronological order (newest first) so pool
+  // deltas are reversed correctly — each rollback assumes it's undoing
+  // the most recent change to the pool.
+  const { data: trades, error: fetchError } = await serviceClient
+    .from("trades")
+    .select("id, created_at")
+    .in("id", tradeIds)
+    .order("created_at", { ascending: false });
+
+  if (fetchError) {
+    return NextResponse.json(
+      { error: "Failed to fetch trades for ordering" },
+      { status: 500 }
+    );
+  }
+
+  const orderedIds = trades.map((t: { id: string }) => t.id);
+
   const results: Array<{
     tradeId: string;
     success: boolean;
@@ -41,8 +60,8 @@ export async function POST(request: Request) {
     data?: unknown;
   }> = [];
 
-  // Process each trade rollback sequentially (order matters for pool state)
-  for (const tradeId of tradeIds) {
+  // Process each trade rollback sequentially in reverse chronological order
+  for (const tradeId of orderedIds) {
     const { data, error } = await serviceClient.rpc("rollback_trade", {
       p_trade_id: tradeId,
     });

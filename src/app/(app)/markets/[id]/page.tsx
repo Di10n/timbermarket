@@ -48,6 +48,7 @@ export default async function MarketPage({
         .from("trades")
         .select("*, profiles(username)")
         .eq("market_id", id)
+        .eq("is_rolled_back", false)
         .order("created_at", { ascending: false })
         .limit(20),
       supabase

@@ -82,10 +82,12 @@ export default function TVPage() {
         supabase
           .from("trades")
           .select("market_id, amount, created_at")
+          .eq("is_rolled_back", false)
           .gte("created_at", since),
         supabase
           .from("trades")
           .select("*, profiles(username), markets(question)")
+          .eq("is_rolled_back", false)
           .order("created_at", { ascending: false })
           .limit(30),
         supabase

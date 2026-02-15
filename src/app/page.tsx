@@ -43,6 +43,7 @@ export default async function Home() {
       supabase
         .from("trades")
         .select("*, profiles(username), markets(question)")
+        .eq("is_rolled_back", false)
         .order("created_at", { ascending: false })
         .limit(15),
       user

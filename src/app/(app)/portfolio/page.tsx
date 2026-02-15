@@ -28,12 +28,14 @@ export default async function PortfolioPage() {
       .from("trades")
       .select("*, markets(question, probability, status)")
       .eq("user_id", user.id)
+      .eq("is_rolled_back", false)
       .order("created_at", { ascending: false })
       .limit(50),
     supabase
       .from("trades")
       .select("market_id, type, amount")
-      .eq("user_id", user.id),
+      .eq("user_id", user.id)
+      .eq("is_rolled_back", false),
   ]);
 
   const balance = (profileResult.data as { balance: number } | null)?.balance ?? 0;
