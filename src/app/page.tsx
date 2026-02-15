@@ -117,21 +117,24 @@ export default async function Home() {
   }
 
   // Build carousel: up to 3 markets the user has traded on, then featured market, then fill to 5 with top-volume
+  // Filter to only active markets for carousel
+  const activeMarkets = topMarkets.filter((m) => m.status === "active");
+
   const userMarketIds = new Set(
     ((userPositionsResult.data ?? []) as { market_id: string }[]).map((p) => p.market_id)
   );
-  const userTradedMarkets = topMarkets
+  const userTradedMarkets = activeMarkets
     .filter((m) => userMarketIds.has(m.id))
     .slice(0, 3);
   const carouselIds = new Set(userTradedMarkets.map((m) => m.id));
 
-  const featuredMarket = topMarkets.find((m) => m.is_featured && !carouselIds.has(m.id));
+  const featuredMarket = activeMarkets.find((m) => m.is_featured && !carouselIds.has(m.id));
   if (featuredMarket) {
     carouselIds.add(featuredMarket.id);
   }
 
   const remainingSlots = 5 - userTradedMarkets.length - (featuredMarket ? 1 : 0);
-  const volumeMarkets = topMarkets
+  const volumeMarkets = activeMarkets
     .filter((m) => !carouselIds.has(m.id))
     .slice(0, remainingSlots);
   const carouselMarkets = [...(featuredMarket ? [featuredMarket] : []), ...userTradedMarkets, ...volumeMarkets];
@@ -143,7 +146,7 @@ export default async function Home() {
     marketIds.length > 0
       ? supabase
           .from("probability_history")
-          .select("market_id, probability, created_at")
+          .select("market_id, probability, probability_distribution, created_at")
           .in("market_id", marketIds)
           .order("created_at", { ascending: true })
           .limit(10000)
@@ -165,13 +168,18 @@ export default async function Home() {
 
   const historyRows = (historyResult.data ?? []) as {
     market_id: string;
-    probability: number;
+    probability?: number;
+    probability_distribution?: Record<string, number>;
     created_at: string;
   }[];
-  const historyByMarketId = new Map<string, { probability: number; created_at: string }[]>();
+  const historyByMarketId = new Map<string, { probability?: number; probability_distribution?: Record<string, number>; created_at: string }[]>();
   for (const row of historyRows) {
     const list = historyByMarketId.get(row.market_id) ?? [];
-    list.push({ probability: row.probability, created_at: row.created_at });
+    list.push({
+      probability: row.probability,
+      probability_distribution: row.probability_distribution,
+      created_at: row.created_at
+    });
     historyByMarketId.set(row.market_id, list);
   }
   const carouselWithHistory = carouselMarkets.map((market) => ({
